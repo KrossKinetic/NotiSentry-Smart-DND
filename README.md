@@ -55,7 +55,7 @@ NotiSentry is built using a modern, scalable, and testable architecture based on
 * **Navigation**: [Jetpack Navigation Compose](https://developer.android.com/jetpack/compose/navigation) for navigating between screens.
 * **Settings**: [Jetpack DataStore](https://developer.android.com/jetpack/androidx/releases/datastore) for persistently storing simple user preferences.
 * **On-Device AI**: [ML Kit Summarization API](https://developers.google.com/ml-kit/language/summarization) (powered by Gemini Nano).
-* * **Off-Device AI**: [ML Firebase Kit](https://developer.android.com/ai/gemini) (powered by Gemini 2.5 Flash, Firebase).
+* **Off-Device AI**: [ML Firebase Kit](https://developer.android.com/ai/gemini) (powered by Gemini 2.5 Flash, Firebase).
 * **Background Service**: `NotificationListenerService` to capture system-wide notifications.
 
 ---
