@@ -15,7 +15,7 @@ NotiSentry is a modern Android application designed to help users reclaim their 
 ## 🏛️ Architecture
 
 NotiSentry is built using a modern, scalable, and testable architecture based on Google's official recommendations. It follows a unidirectional data flow pattern, with the Repository acting as the single source of truth for all application data.
-
+```
 +----------------+      +------------------+      +------------------+      +---------+
 |                |      |                  |      |                  |      |         |
 |  Android OS    |----->| NotiSentryService|----->|   Application    |----->|  Room   |
@@ -41,6 +41,7 @@ NotiSentry is built using a modern, scalable, and testable architecture based on
                                                   |   (The Screen)   |
                                                   +------------------+
 
+```
 ---
 ## 🛠️ Tech Stack & Key Libraries
 
