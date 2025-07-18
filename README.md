@@ -1,6 +1,6 @@
 # NotiSentry
 
-NotiSentry is a modern Android application designed to help users reclaim their focus by intelligently managing, filtering, and summarizing notifications. Built with the latest Android technologies, this app provides a robust solution to notification overload.
+NotiSentry is a WIP modern Android application designed to help users reclaim their focus by intelligently managing, filtering, and summarizing notifications. Built with the latest Android technologies, this app provides a robust solution to notification overload. Below are the intended specifications for the app. Do note, that Gemini Nano is not properly working yet as I do not own a Pixel 9 device. I have a Pixel 8 Pro and as of now my device does not work with Gemini Nano, as a workaround I have been testing my app with Gemini Flash 2.5 using Firebase and Vortex AI. I will swap it with Gemini Nano for the privacy-focus that I promised as soon as I can test it and then I will release the first version of the app.
 
 ## ✨ Features
 
@@ -53,7 +53,7 @@ NotiSentry is built using a modern, scalable, and testable architecture based on
 * **Navigation**: [Jetpack Navigation Compose](https://developer.android.com/jetpack/compose/navigation) for navigating between screens.
 * **Settings**: [Jetpack DataStore](https://developer.android.com/jetpack/androidx/releases/datastore) for persistently storing simple user preferences.
 * **On-Device AI**: [ML Kit Summarization API](https://developers.google.com/ml-kit/language/summarization) (powered by Gemini Nano).
-* **Image Loading**: [Coil](https://coil-kt.github.io/coil/) for efficiently loading application icons.
+* * **Off-Device AI**: [ML Firebase Kit](https://developer.android.com/ai/gemini) (powered by Gemini 2.5 Flash, Firebase).
 * **Background Service**: `NotificationListenerService` to capture system-wide notifications.
 
 ---
