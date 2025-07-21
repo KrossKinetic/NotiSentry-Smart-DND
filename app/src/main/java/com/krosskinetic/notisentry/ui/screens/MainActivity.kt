@@ -148,7 +148,8 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             }
             composable(Screen.Play.route) {
                 StartScreen(
-                    startStopFnc = {appViewModel.startStopFunc(context)}
+                    startStopFnc = {appViewModel.startStopFunc(context)},
+                    start = uiState.startService
                 )
             }
             composable(Screen.Summaries.route) {

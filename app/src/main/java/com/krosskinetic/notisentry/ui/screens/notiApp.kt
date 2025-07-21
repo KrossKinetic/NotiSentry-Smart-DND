@@ -5,10 +5,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AssistChip
@@ -31,6 +34,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
@@ -73,7 +77,7 @@ fun FocusRules(updateWhitelistedApps: (String) -> Unit, updateListOfAppDetails: 
 @Composable
 fun AppCard(appName: String, image: Drawable, anExecutableFunction: () -> Unit, checked: Boolean, modifier: Modifier = Modifier){
     Card (modifier = modifier
-        .padding(7.dp)
+        .padding(10.dp)
         .fillMaxWidth()
         .height(70.dp),
         shape = RoundedCornerShape(8.dp)) {
@@ -298,14 +302,98 @@ fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: Strin
  * */
 
 @Composable
-fun StartScreen(startStopFnc: () -> Unit, modifier: Modifier = Modifier){
-    var start by remember { mutableStateOf(true) }
-    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+fun StartScreen(startStopFnc: () -> Unit, start: Boolean, modifier: Modifier = Modifier){
+
+
+    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
+
+        UseSmartNotificationFilter(modifier)
+
+        UseGeminiFlash(modifier)
+
+        Spacer(modifier = Modifier.weight(1f))
+
         Button(onClick = {
-            start = !start
             startStopFnc()
-        }) {
-            Text(text = if (start) "Start NotiSentry" else "Stop NotiSentry")
+        },
+            modifier = Modifier.padding(60.dp)
+        ) {
+            Text(text = if (!start) "Start NotiSentry" else "Stop NotiSentry")
+        }
+
+    }
+}
+
+@Composable
+fun UseSmartNotificationFilter(modifier: Modifier = Modifier){
+    Card (modifier = modifier
+        .padding(10.dp)
+        .fillMaxWidth()
+        .height(70.dp),
+        shape = RoundedCornerShape(8.dp)) {
+
+        Row (modifier = Modifier.fillMaxSize()) {
+
+            Row (modifier = Modifier.weight(1f).fillMaxHeight().clickable(onClick = {
+                /* TODO */
+            })) {
+                Text(
+                    text = "Use Smart Notification Categorization",
+                    modifier = Modifier
+                        .padding(start = 10.dp)
+                        .align(Alignment.CenterVertically)
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = "Expand",
+                    modifier = Modifier
+                        .padding(start = 10.dp)
+                        .align(Alignment.CenterVertically)
+                )
+            }
+
+            VerticalDivider(modifier = Modifier.padding(all = 10.dp).padding(start = 0.dp))
+
+            Switch(
+                checked = false,
+                onCheckedChange = {},
+                modifier = Modifier
+                    .padding(end=10.dp)
+                    .align(Alignment.CenterVertically)
+            )
+        }
+    }
+}
+
+@Composable
+fun UseGeminiFlash(modifier: Modifier = Modifier){
+    Card (modifier = modifier
+        .padding(10.dp)
+        .fillMaxWidth()
+        .height(70.dp),
+        shape = RoundedCornerShape(8.dp)) {
+
+        Row (modifier = Modifier.fillMaxSize()) {
+
+            Text(
+                text = "Use Gemini-Flash-2.5 (Off-Device)",
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .align(Alignment.CenterVertically)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Switch(
+                checked = false,
+                onCheckedChange = {},
+                modifier = Modifier
+                    .padding(end=10.dp)
+                    .align(Alignment.CenterVertically)
+            )
         }
     }
 }

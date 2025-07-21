@@ -7,9 +7,7 @@ import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Firebase
-import com.google.firebase.ai.ai
-import com.google.firebase.ai.type.GenerativeBackend
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
@@ -21,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,27 +42,74 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     val savedArchiveSummaries: List<AppNotificationSummary> = emptyList(),
 
     // DataStore user preference
-    val startService: Boolean = false,
-    val startServiceTime: Long = 0,
-    val endServiceTime: Long = 0,
     val introDone: Boolean = false,
-    val isLoading: Boolean = true
+    val startService: Boolean = false,
+    val useSmartCategorization: Boolean = false,
+    val startServiceTime: Long = 0,
+    val endServiceTime: Long = 0
 )
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val repository: NotificationRepository,
     private val settingsRepository: SettingsRepository
-): ViewModel() { // Holds UI data that survives configuration changes
-    private val _uiState = MutableStateFlow(AppUiState()) // Tracks updates of GameUiState and transmits it
-    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
+): ViewModel() {
+    private val _uiState = MutableStateFlow(AppUiState()) // Created a live updating flow which can't
+    // be read or written to
+    val uiState: StateFlow<AppUiState> = _uiState.asStateFlow() // exposes it as a read-only flow
 
-    val startService = settingsRepository.startServiceFlow
-    val startServiceTime = settingsRepository.startServiceTimeFlow
-    val endServiceTime = settingsRepository.endServiceTimeFlow
-    val introDone = settingsRepository.introDoneFlow
 
     init {
         _uiState.value = AppUiState()
+
+        viewModelScope.launch {
+            settingsRepository.startUseSmartCategorizationFlow.collect { newCategorization ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        useSmartCategorization = newCategorization
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.startServiceFlow.collect { newStartService ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        startService = newStartService
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.startServiceTimeFlow.collect { newStartServiceTime->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        startServiceTime = newStartServiceTime
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.endServiceTimeFlow.collect { newEndServiceTime ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                       endServiceTime = newEndServiceTime
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.introDoneFlow.collect { newIntroDone ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        introDone = newIntroDone
+                    )
+                }
+            }
+        }
 
         viewModelScope.launch {
             repository.blockedNotificationsFlow.collect { newBlockedList ->
@@ -183,41 +227,29 @@ class AppViewModel @Inject constructor(
     }
 
     fun updateIntroDone(){
-        _uiState.update {
-            currentState ->
-            currentState.copy(
-                introDone = true
-            )
+        viewModelScope.launch {
+            settingsRepository.saveIntroDone(true)
         }
     }
 
 
-    fun startStopFunc(context: Context){
-        if (_uiState.value.startService){
-            Log.d("NotiSentryAI", "Stopping service")
-            _uiState.update {
-                currentState ->
-                currentState.copy(
-                    endServiceTime = System.currentTimeMillis(),
-                    startService = !currentState.startService
-                )
-            }
-            summarizeNotifications(context)
-        } else {
-            Log.d("NotiSentryAI", "Started service")
-            _uiState.update {
-                currentState ->
-                currentState.copy(
-                    startServiceTime = System.currentTimeMillis(),
-                    startService = !currentState.startService
-                )
+    fun startStopFunc(context: Context) {
+        viewModelScope.launch {
+            if (uiState.value.startService){
+                Log.d("NotiSentryAI", "Stopping service")
+                settingsRepository.saveIsStarted(isStarted = false)
+                settingsRepository.saveEndTime(endTime = System.currentTimeMillis())
+                summarizeNotificationsWithGemma(context)
+            } else {
+                Log.d("NotiSentryAI", "Started service")
+                settingsRepository.saveIsStarted(isStarted = true)
+                settingsRepository.saveStartTime(startTime = System.currentTimeMillis())
             }
         }
     }
 
     fun isNotificationAccessGranted(context: Context): Boolean {
-        return NotificationManagerCompat.getEnabledListenerPackages(context)
-            .contains(context.packageName)
+        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     }
 
     /** This is for Gemini Nano, not yet tested due to lack of Pixel 9 Pro
@@ -268,56 +300,63 @@ class AppViewModel @Inject constructor(
         }
     }*/
 
-
-    // The unused Context parameter has been removed.
-    fun summarizeNotifications(context: Context) {
-
-        val timeStart = uiState.value.startServiceTime
-        val timeEnd = uiState.value.endServiceTime
-        // Using joinToString for cleaner code.
-
-        val summaryText = _uiState.value.blockedNotifications
-            .filter { it.timestamp >= timeStart && it.timestamp<= timeEnd }
-            .joinToString(separator = "\n") {"App Package: " + it.packageName + ", Notification Text" +  it.text}
-
-        Log.d("NotiSentryAI", "Summary text: $summaryText")
-
-        if (summaryText.isBlank()) {
-            return
-        }
-
+    fun summarizeNotificationsWithGemma(context: Context) {
         viewModelScope.launch {
-            try {
-                val model = Firebase.ai(backend = GenerativeBackend.googleAI())
-                    .generativeModel("gemini-2.5-flash")
+            withContext(Dispatchers.IO) {
+                val timeStart = uiState.value.startServiceTime
+                val timeEnd = uiState.value.endServiceTime
 
-                val prompt = "Summarize the following notifications into distinct sections " +
-                        "that don't overwhelm the user but provide all the necessary " +
-                        "information. Make sure to include the name of the app in the summary if it isn't clear from the summary text itself so people know where it is coming from. Follow the following format: \n" +
-                        "Here is the summary: \n " +
-                        "<Section>: <Summary> \n" +
-                        " If text is missing, say what is written inside delimiters ```<Section>: Notification from <App Name> was received, but text was missing.``` \n" +
-                        "Notifications to summarize: \n" +
-                        summaryText
+                val summaryText = _uiState.value.blockedNotifications
+                    .filter { it.timestamp >= timeStart && it.timestamp <= timeEnd }
+                    .joinToString(separator = "\n") { "App Package: " + it.packageName + ", Notification Text" + it.text }
 
-                val summary = model.generateContent(prompt).text ?: ""
+                Log.d("NotiSentryAI", "Summary text (Gemma): $summaryText")
 
-                if (summary.isNotBlank()) {
-                    repository.addToSavedSummary(summary, timeStart, timeEnd)
-                    _uiState.update {
-                        currentState ->
-                        currentState.copy(
-                            startServiceTime = 0,
-                            endServiceTime = 0
-                        )
-                    }
+                if (summaryText.isBlank()) {
+                    return@withContext
                 }
 
-            } catch (e: Exception) {
-                Log.d("NotiSentryAI", "Error summarizing notifications: $e")
+                try {
+                    val prompt = """
+                        ### ROLE & GOAL ###
+                        You are a highly efficient executive assistant. Your goal is to process a list of raw notification data and present a prioritized, easy-to-read briefing for the user. You must identify what is most important and summarize the rest concisely by category.
+                        
+                        ### RULES ###
+                        1.  **Triage First:** Read all notifications and first identify any that are time-sensitive or appear to be from a direct personal contact (like a specific person's name in a messaging app). Pull these out into a special "Priority" section.
+                        2.  **Categorize the Rest:** Group the remaining notifications into these categories: Social Media, Shopping & Promotions, News & Information, Entertainment & Gaming, and General Updates.
+                        3.  **Synthesize, Don't List:** For each category, write a fluid, natural sentence. Do not just list items. Combine information where possible. For example, instead of "- Instagram notification. - Facebook notification.", write "- You have some general updates from **Instagram** and **Facebook**."
+                        4.  **Formatting:** Use Markdown bullet points (`-`) and bolding (`**`) for emphasis on names and topics.
+                        5.  **Special Rule:** If you encounter a notification with no text, simply state "The <App Name> notification was received, but text was missing. Check the app for updates."
+                        
+                        ### REAL DATA ###
+                        $summaryText
+                        
+                        ### YOUR BRIEFING ###
+                        """
+
+                    val taskOptions = LlmInference.LlmInferenceOptions.builder()
+                        .setModelPath("/data/data/com.krosskinetic.notisentry/files/model.task")
+                        .setMaxTopK(64)
+                        .setMaxTokens(4096)
+                        .build()
+
+                    // Create an instance of the LLM Inference task
+                    val llmInference = LlmInference.createFromOptions(context, taskOptions)
+
+                    val summary = llmInference.generateResponse(prompt)
+
+                    Log.d("NotiSentryAI", "Summary (Gemma): $summary")
+
+                    if (summary.isNotBlank()) {
+                        repository.addToSavedSummary(summary, timeStart, timeEnd)
+                        settingsRepository.saveStartTime(0)
+                        settingsRepository.saveEndTime(0)
+                    }
+
+                } catch (e: Exception) {
+                    Log.d("NotiSentryAI", "Error summarizing notifications: $e")
+                }
             }
         }
     }
-
-
 }

@@ -7,18 +7,26 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
-class SettingsRepository(private val context: Context) {
+@Singleton
+class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     private val START_SERVICE_KEY = booleanPreferencesKey("start_service")
     private val START_SERVICE_TIME_KEY = longPreferencesKey("start_service_time")
     private val END_SERVICE_TIME_KEY = longPreferencesKey("end_service_time")
     private val INTRO_DONE_KEY = booleanPreferencesKey("intro_done")
 
+    private val USE_SMART_CATEGORIZATION_KEY = booleanPreferencesKey("smart_categorization")
 
+    val startUseSmartCategorizationFlow: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[USE_SMART_CATEGORIZATION_KEY] ?: false
+        }
     val startServiceFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[START_SERVICE_KEY] ?: false
@@ -39,10 +47,20 @@ class SettingsRepository(private val context: Context) {
             preferences[INTRO_DONE_KEY] ?: false
         }
 
-    suspend fun saveServiceState(isStarted: Boolean, startTime: Long, endTime: Long) {
+    suspend fun saveIsStarted(isStarted: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[START_SERVICE_KEY] = isStarted
+        }
+    }
+
+    suspend fun saveStartTime(startTime: Long) {
+        context.dataStore.edit { preferences ->
             preferences[START_SERVICE_TIME_KEY] = startTime
+        }
+    }
+
+    suspend fun saveEndTime(endTime: Long) {
+        context.dataStore.edit { preferences ->
             preferences[END_SERVICE_TIME_KEY] = endTime
         }
     }
@@ -50,6 +68,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveIntroDone(isDone: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[INTRO_DONE_KEY] = isDone
+        }
+    }
+
+    suspend fun saveSmartCategorization(isSmart: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[INTRO_DONE_KEY] = isSmart
         }
     }
 }
