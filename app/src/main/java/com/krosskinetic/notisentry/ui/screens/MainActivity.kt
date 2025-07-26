@@ -5,12 +5,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +29,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -59,6 +66,11 @@ sealed class Screen(val route: String, val icon: ImageVector) {
     object FocusRules : Screen("Focus Rules", Icons.AutoMirrored.Filled.List)
     object Play : Screen("Start", Icons.Default.PlayCircle)
     object Summaries : Screen("Summaries", Icons.Default.Info)
+    object FilteredNotifs : Screen("Filtered Notifications", Icons.Default.Info)
+
+    object Loading : Screen("Loading", Icons.Default.Info)
+
+    object smartCategorizationScreen : Screen("Loading", Icons.Default.Info)
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,7 +87,7 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
 
     Scaffold(
         topBar = {
-            if (uiState.introDone) {
+            if (uiState.introDone == true) {
                 // Use the TopAppBar composable here
                 TopAppBar(
                     title = {
@@ -89,7 +101,7 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (uiState.introDone){
+            if (uiState.introDone == true){
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route
@@ -116,21 +128,50 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (uiState.introDone) Screen.FocusRules.route else Screen.Welcome.route,
+            startDestination = if (uiState.introDone == null) Screen.Loading.route else if (uiState.introDone == false) Screen.Welcome.route else Screen.FocusRules.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Loading.route) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
             /**
              * Below are the 3 one-time view intro screen
              * */
-            composable(Screen.Welcome.route) {
+            composable(Screen.Welcome.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 IntroScreenWelcome({ navController.navigate(Screen.NotiPerm.route) })
             }
-            composable(Screen.NotiPerm.route) {
+            composable(Screen.NotiPerm.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 IntroScreenPermission(
                     appViewModel.isNotificationAccessGranted(context),
                     { navController.navigate(Screen.AllDone.route) })
             }
-            composable(Screen.AllDone.route) {
+            composable(Screen.AllDone.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 IntroScreenAllDone(
                     { navController.navigate(Screen.FocusRules.route) },
                     { appViewModel.updateIntroDone() })
@@ -139,27 +180,86 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             /**
              * Below are the 3 of the actual screens
              * */
-            composable(Screen.FocusRules.route) {
+            composable(Screen.FocusRules.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 FocusRules(
                     whitelistedApps = uiState.whitelistedApps,
                     appDetailList = uiState.appDetailList,
                     updateListOfAppDetails = { appViewModel.updateListOfAppDetails(context) },
                     updateWhitelistedApps = { appViewModel.updateWhitelistedApps(it) })
             }
-            composable(Screen.Play.route) {
+            composable(Screen.Play.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 StartScreen(
-                    startStopFnc = {appViewModel.startStopFunc(context)},
-                    start = uiState.startService
+                    startStopFnc = { appViewModel.startStopFunc(context) },
+                    start = uiState.startService,
+                    useSmartCategorization = { appViewModel.updateSmartCategorization() },
+                    useSmartBoolean = uiState.useSmartCategorization,
+                    goToSmartScreenCategorization = {navController.navigate(Screen.smartCategorizationScreen.route)}
                 )
             }
-            composable(Screen.Summaries.route) {
+            composable(Screen.Summaries.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
                 SummariesScreen(
                     { appViewModel.updateSummaries() },
                     summaryToday = uiState.savedTodaySummaries,
                     summaryYesterday = uiState.savedYesterdaySummaries,
                     summaryArchive = uiState.savedArchiveSummaries,
                     savedSummaries = uiState.savedSummaries,
-                    timeConverter = { appViewModel.formatTimestampToTime(it) }
+                    timeConverter = {
+                        appViewModel.formatTimestampToTime(it)
+                    },
+                    allNotifFunc = {startTime,endTime -> appViewModel.updateFilteredNotifs(startTime, endTime)},
+                    newScreen = {navController.navigate(Screen.FilteredNotifs.route)}
+                )
+            }
+            composable(Screen.FilteredNotifs.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
+                FilteredNotifsScreen(
+                    notifs = uiState.filteredNotifs,
+                    timeConverter = {
+                        appViewModel.formatTimestampToTime(it)
+                    },
+                    newScreen = { navController.navigate(Screen.Summaries.route) },
+                    getAppIcon = { appViewModel.getAppIconByPackageName(context, it) },
+                )
+            }
+            composable(Screen.smartCategorizationScreen.route,
+                enterTransition = { slideIntoContainer(
+                    animationSpec = tween(durationMillis = 500),
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                )},
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 400)
+                )}) {
+                SmartCategorizationScreen(
+                    goBack = { navController.navigate(Screen.Play.route) },
+                    text = uiState.smartCategorizationString,
+                    updateText = {appViewModel.updateSmartCategorizationString(it)}
                 )
             }
         }

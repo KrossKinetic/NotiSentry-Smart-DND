@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -23,9 +24,16 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     private val USE_SMART_CATEGORIZATION_KEY = booleanPreferencesKey("smart_categorization")
 
+    private val SMART_CATEGORIZATION_STRING_KEY = stringPreferencesKey("smart_categorization_string")
+
     val startUseSmartCategorizationFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[USE_SMART_CATEGORIZATION_KEY] ?: false
+        }
+
+    val startSmartCategorizationStringFlow: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[SMART_CATEGORIZATION_STRING_KEY] ?: ""
         }
     val startServiceFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
@@ -73,7 +81,13 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     suspend fun saveSmartCategorization(isSmart: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[INTRO_DONE_KEY] = isSmart
+            preferences[USE_SMART_CATEGORIZATION_KEY] = isSmart
+        }
+    }
+
+    suspend fun saveSmartCategorizationStringTime(string: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SMART_CATEGORIZATION_STRING_KEY] = string
         }
     }
 }

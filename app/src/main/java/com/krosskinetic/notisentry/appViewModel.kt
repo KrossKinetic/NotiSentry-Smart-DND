@@ -3,11 +3,14 @@ package com.krosskinetic.notisentry
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
@@ -19,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,13 +45,15 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     val savedTodaySummaries: List<AppNotificationSummary> = emptyList(),
     val savedYesterdaySummaries: List<AppNotificationSummary> = emptyList(),
     val savedArchiveSummaries: List<AppNotificationSummary> = emptyList(),
+    val filteredNotifs: List<AppNotifications> = emptyList(),
 
     // DataStore user preference
-    val introDone: Boolean = false,
+    val introDone: Boolean? = null,
     val startService: Boolean = false,
     val useSmartCategorization: Boolean = false,
     val startServiceTime: Long = 0,
-    val endServiceTime: Long = 0
+    val endServiceTime: Long = 0,
+    val smartCategorizationString: String = ""
 )
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -60,6 +67,16 @@ class AppViewModel @Inject constructor(
 
     init {
         _uiState.value = AppUiState()
+
+        viewModelScope.launch {
+            settingsRepository.startSmartCategorizationStringFlow.collect { newString ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        smartCategorizationString = newString
+                    )
+                }
+            }
+        }
 
         viewModelScope.launch {
             settingsRepository.startUseSmartCategorizationFlow.collect { newCategorization ->
@@ -239,7 +256,7 @@ class AppViewModel @Inject constructor(
                 Log.d("NotiSentryAI", "Stopping service")
                 settingsRepository.saveIsStarted(isStarted = false)
                 settingsRepository.saveEndTime(endTime = System.currentTimeMillis())
-                summarizeNotificationsWithGemma(context)
+                summarizeNotificationsWithGemma()
             } else {
                 Log.d("NotiSentryAI", "Started service")
                 settingsRepository.saveIsStarted(isStarted = true)
@@ -300,7 +317,7 @@ class AppViewModel @Inject constructor(
         }
     }*/
 
-    fun summarizeNotificationsWithGemma(context: Context) {
+    private fun summarizeNotificationsWithGemma() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 val timeStart = uiState.value.startServiceTime
@@ -308,7 +325,7 @@ class AppViewModel @Inject constructor(
 
                 val summaryText = _uiState.value.blockedNotifications
                     .filter { it.timestamp >= timeStart && it.timestamp <= timeEnd }
-                    .joinToString(separator = "\n") { "App Package: " + it.packageName + ", Notification Text" + it.text }
+                    .joinToString(separator = "\n") { it.parsedText }
 
                 Log.d("NotiSentryAI", "Summary text (Gemma): $summaryText")
 
@@ -317,46 +334,70 @@ class AppViewModel @Inject constructor(
                 }
 
                 try {
-                    val prompt = """
-                        ### ROLE & GOAL ###
-                        You are a highly efficient executive assistant. Your goal is to process a list of raw notification data and present a prioritized, easy-to-read briefing for the user. You must identify what is most important and summarize the rest concisely by category.
-                        
-                        ### RULES ###
-                        1.  **Triage First:** Read all notifications and first identify any that are time-sensitive or appear to be from a direct personal contact (like a specific person's name in a messaging app). Pull these out into a special "Priority" section.
-                        2.  **Categorize the Rest:** Group the remaining notifications into these categories: Social Media, Shopping & Promotions, News & Information, Entertainment & Gaming, and General Updates.
-                        3.  **Synthesize, Don't List:** For each category, write a fluid, natural sentence. Do not just list items. Combine information where possible. For example, instead of "- Instagram notification. - Facebook notification.", write "- You have some general updates from **Instagram** and **Facebook**."
-                        4.  **Formatting:** Use Markdown bullet points (`-`) and bolding (`**`) for emphasis on names and topics.
-                        5.  **Special Rule:** If you encounter a notification with no text, simply state "The <App Name> notification was received, but text was missing. Check the app for updates."
-                        
-                        ### REAL DATA ###
-                        $summaryText
-                        
-                        ### YOUR BRIEFING ###
-                        """
+                    val prompt = """ 
+                    You are an expert AI assistant designed to analyze and synthesize information from multiple notifications. Your goal is to identify distinct conversations and provide a high-level summary for each.
 
-                    val taskOptions = LlmInference.LlmInferenceOptions.builder()
-                        .setModelPath("/data/data/com.krosskinetic.notisentry/files/model.task")
-                        .setMaxTopK(64)
-                        .setMaxTokens(4096)
-                        .build()
+                    **Instructions:**
+                    1.  Carefully read all the notifications listed below.
+                    2.  Identify the main topics or conversations.
+                    3.  Group the notifications that belong to the same conversation.
+                    4.  For each group, create a concise, one to three sentence text that summarizes the core topic. Make sure you include all the major information present in the notification.
+                    5.  If a notification is missing information, simply state that "<Group>: <AppName> sent a notification but further information was missing, please check the app for more details"
+                    6.  Present the output as a clean numbered list of these headlines in the format: "1. <Group>: <Summary>" Don't use any asterisks for text.
 
-                    // Create an instance of the LLM Inference task
-                    val llmInference = LlmInference.createFromOptions(context, taskOptions)
+                    **--- NOTIFICATIONS ---**
+                    $summaryText
+                    """
 
-                    val summary = llmInference.generateResponse(prompt)
+                    val model = Firebase.ai(backend = GenerativeBackend.googleAI())
+                        .generativeModel("gemini-2.5-flash")
 
-                    Log.d("NotiSentryAI", "Summary (Gemma): $summary")
+                    val summary = model.generateContent(prompt)
 
-                    if (summary.isNotBlank()) {
-                        repository.addToSavedSummary(summary, timeStart, timeEnd)
-                        settingsRepository.saveStartTime(0)
-                        settingsRepository.saveEndTime(0)
-                    }
+                    Log.d("NotiSentryAI", "Summary: $summary")
+
+                    repository.addToSavedSummary(summary.text?: "No summary found", timeStart, timeEnd)
+                    settingsRepository.saveStartTime(0)
+                    settingsRepository.saveEndTime(0)
 
                 } catch (e: Exception) {
                     Log.d("NotiSentryAI", "Error summarizing notifications: $e")
                 }
             }
+        }
+    }
+
+    fun updateFilteredNotifs(startTime: Long, endTime: Long){
+        viewModelScope.launch {
+            val notifs = repository.blockedNotificationsFlow.map { notif -> notif.filter {it.timestamp >= startTime && it.timestamp <= endTime}}.first()
+            _uiState.update {
+                currentState ->
+                currentState.copy(
+                    filteredNotifs = notifs
+                )
+            }
+        }
+    }
+
+    fun getAppIconByPackageName(context: Context, packageName: String): Drawable? {
+        return try {
+            context.packageManager.getApplicationIcon(packageName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun updateSmartCategorization(){
+        viewModelScope.launch {
+            settingsRepository.saveSmartCategorization(!uiState.value.useSmartCategorization)
+        }
+    }
+
+    fun updateSmartCategorizationString(string: String){
+        viewModelScope.launch {
+            settingsRepository.saveSmartCategorizationStringTime(string)
+            Log.d("NotiSentryAI", "Updated smart categorization string: ${settingsRepository.startSmartCategorizationStringFlow.first()}")
         }
     }
 }

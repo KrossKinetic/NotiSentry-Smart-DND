@@ -22,8 +22,15 @@ data class AppNotifications(
     val title: String,
     val text: String,
     val timestamp: Long,
-    val packageName: String
-)
+    val packageName: String,
+    val appName: String,
+    val messages: List<MessageInfo>,
+    val conversationTitle: String,
+    var parsedText: String = ""
+) {
+    // Using String? instead of CharSequence? for compatibility with Gson
+    data class MessageInfo(val sender: String?, val text: String?, val timestamp: Long)
+}
 
 @Entity(tableName = "saved_summaries")
 data class AppNotificationSummary(

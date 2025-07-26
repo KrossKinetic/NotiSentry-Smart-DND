@@ -3,13 +3,20 @@ package com.krosskinetic.notisentry
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
+import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import androidx.core.app.Person
+import androidx.core.graphics.drawable.toBitmapOrNull
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
 import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.NotiSentryEntryPoint
 import com.krosskinetic.notisentry.data.NotificationRepository
@@ -32,7 +39,6 @@ class NotiSentryService : NotificationListenerService() {
     private val tag = "NotiSentryService"
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // This ensures service is initialized AFTER repository is initialized
     override fun onCreate() {
         super.onCreate()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -52,34 +58,29 @@ class NotiSentryService : NotificationListenerService() {
             }
 
             serviceScope.launch {
-                if (!repository.isAppWhitelisted(packageName) && settingsRepository.startServiceFlow.first()) {
-                    val notificationText = sbn.notification.extras.getString(Notification.EXTRA_TEXT)?: ""
-                    val notificationTitle = sbn.notification.extras.getString(Notification.EXTRA_TITLE)?: ""
-
+                if (!repository.isAppWhitelisted(packageName) && settingsRepository.startServiceFlow.first() && !isNotificationLive(sbn)) {
                     cancelNotification(sbn.key)
 
+                    var allow = false
 
-                    val allow = allowNotification(context = this@NotiSentryService,
-                        "\n<Notification>\n Notification Package Name: $packageName\nNotification Title: $notificationTitle\nNotification Text: $notificationText \n</Notification>\n"
-                    )
+                    val notification = extractNotificationData(sbn,this@NotiSentryService)
+                    val notificationFinalText = formatNotificationToString(notification)
+                    notification.parsedText = notificationFinalText
+
+                    Log.d("NotiSentryAI", "Notification: $notificationFinalText")
+
+                    if (settingsRepository.startUseSmartCategorizationFlow.first()){
+                        allow = allowNotification(
+                            notificationText = notificationFinalText,
+                            intent = settingsRepository.startSmartCategorizationStringFlow.first()
+                        )
+                    }
 
                     if (allow){
-                        postNotification(this@NotiSentryService, AppNotifications(
-                            title = notificationTitle,
-                            text = notificationText,
-                            packageName = packageName,
-                            timestamp = System.currentTimeMillis()
-                        ))
+                        postNotification(this@NotiSentryService, notification)
                         Log.d(tag, "Allowed Notification using Gemini-2.5-Flash from: $packageName")
                     } else {
-                        val appNotification = AppNotifications(
-                            title = notificationTitle,
-                            text = notificationText,
-                            packageName = packageName,
-                            timestamp = System.currentTimeMillis()
-                        )
-
-                        repository.addBlockedNotification(appNotification)
+                        repository.addBlockedNotification(notification)
                         Log.d(tag, "Blocked and saved notification from: $packageName")
                     }
                 }
@@ -93,30 +94,26 @@ class NotiSentryService : NotificationListenerService() {
     }
 }
 
-suspend fun allowNotification(context: Context, notificationText: String): Boolean {
+suspend fun allowNotification(notificationText: String, intent: String): Boolean {
     return withContext(Dispatchers.IO) {
-        val userInstruction = "Can you allow Notifications that are from my Clock app please?"
+        val userInstruction = intent
 
         try {
 
             val prompt = "Return a simple 'Allow' or 'Don't Allow' based on the following user " +
-                    "instruction about a notification if the user intent matches the notification: \n" +
+                    "instruction about a notification if the user intent matches the notification. 'Allow' or 'Don't Allow' must be " +
+                    "at the end of the response with 'A_2' (if Allowed) or 'A_1' (if Don't Allow) : \n" +
                     "User Intent: " + userInstruction + "\n" +
                     "Notification: " + notificationText
 
-            val taskOptions = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath("/data/data/com.krosskinetic.notisentry/files/model.task")
-                .setMaxTopK(64)
-                .build()
+            val model = Firebase.ai(backend = GenerativeBackend.googleAI())
+                .generativeModel("gemini-2.5-flash")
 
-            // Create an instance of the LLM Inference task
-            val llmInference = LlmInference.createFromOptions(context, taskOptions)
-
-            val summary = llmInference.generateResponse(prompt)
+            val summary = model.generateContent(prompt).text?:""
 
             Log.d("NotiSentryAI", "Gemini Decided to : $summary")
 
-            return@withContext summary.equals("Allow", ignoreCase = true)
+            return@withContext summary.contains("A_2")
 
         } catch (e: Exception) {
             Log.d("NotiSentryAI", "Error in allowNotification: $e")
@@ -132,6 +129,7 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
     val channelId = "general_notifications"
     val channelName = "General"
 
+    // Create the channel (no changes needed here)
     val channel = NotificationChannel(
         channelId,
         channelName,
@@ -141,23 +139,117 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
     }
     notificationManager.createNotificationChannel(channel)
 
-    val notificationBuilder = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(R.drawable.ic_launcher_foreground) // IMPORTANT: Replace with your icon resource
-        .setContentTitle("Potential Notification Alert from: ${getAppNameFromPackageName(context, appNotification.packageName)}")
-        .setContentText(if (appNotification.text == "") "NotiSentry detected Notification from an app based on your intent, but notification did not have text. Please check the app that sent the notification." else "Text: " + appNotification.text)
-        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        .setAutoCancel(true) // Dismiss the notification when the user taps it
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(appNotification.packageName)
+    val pendingIntent = if (launchIntent != null) {
+        PendingIntent.getActivity(context, 0, launchIntent, PendingIntent.FLAG_IMMUTABLE)
+    } else {
+        null
+    }
 
+    // Start building the notification
+    val notificationBuilder = NotificationCompat.Builder(context, channelId)
+        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setLargeIcon(getAppIconByPackageName(context, appNotification.packageName)?.toBitmapOrNull())
+        .setWhen(appNotification.timestamp)
+        .setContentIntent(pendingIntent)
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+
+    if (appNotification.messages.isNotEmpty()) {
+        val person = Person.Builder().setName("You").build()
+        val messagingStyle = NotificationCompat.MessagingStyle(person)
+            .setConversationTitle(appNotification.conversationTitle.ifBlank { appNotification.title })
+            .setGroupConversation(appNotification.messages.distinctBy { it.sender }.count() > 1)
+
+        appNotification.messages.forEach { msg ->
+            val senderPerson = Person.Builder().setName(msg.sender).build()
+            messagingStyle.addMessage(msg.text, msg.timestamp, senderPerson)
+        }
+
+        notificationBuilder.setStyle(messagingStyle)
+
+    } else {
+        // This is a standard notification
+        notificationBuilder
+            .setContentTitle(appNotification.title.ifBlank { appNotification.appName })
+            .setContentText(appNotification.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(appNotification.text)) // Allow text to expand
+    }
+
+    // Use a unique ID based on the timestamp for this notification
     val notificationId = appNotification.timestamp.toInt()
     notificationManager.notify(notificationId, notificationBuilder.build())
 }
 
-fun getAppNameFromPackageName(context: Context, packageName: String): String {
+fun getAppIconByPackageName(context: Context, packageName: String): Drawable? {
     return try {
-        val packageManager = context.packageManager
-        val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
-        packageManager.getApplicationLabel(applicationInfo).toString()
-    } catch(_: PackageManager.NameNotFoundException) {
+        context.packageManager.getApplicationIcon(packageName)
+    } catch (e: PackageManager.NameNotFoundException) {
+        e.printStackTrace()
+        null
+    }
+}
+
+
+fun formatNotificationToString(notification: AppNotifications): String {
+    val sb = StringBuilder()
+
+    val displayTitle = notification.conversationTitle.ifBlank {
+        notification.title
+    }
+    sb.append("[${notification.appName}]")
+    if (displayTitle.isNotBlank()) {
+        sb.append(" $displayTitle")
+    }
+    sb.appendLine()
+    if (notification.messages.isNotEmpty()) {
+        notification.messages.forEach { message ->
+            val sender = message.sender ?: "Unknown"
+            sb.appendLine("$sender: ${message.text}")
+        }
+    } else if (notification.text.isNotBlank()) {
+        sb.appendLine(notification.text)
+    }
+
+    return sb.toString().trim()
+}
+
+fun extractNotificationData(sbn: StatusBarNotification, context: Context): AppNotifications {
+    val extras = sbn.notification.extras
+    val packageName = sbn.packageName
+
+    val appName = try {
+        val pm = context.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, PackageManager.GET_META_DATA)).toString()
+    } catch (_: Exception) {
         packageName
     }
+
+    val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Bundle::class.java)?.mapNotNull {
+        AppNotifications.MessageInfo(
+            sender = it.getString("sender"),
+            text = it.getString("text"),
+            timestamp = it.getLong("time")
+        )
+    } ?: emptyList()
+
+    return AppNotifications(
+        title = extras.getString(Notification.EXTRA_TITLE) ?: "",
+        text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "",
+        timestamp = sbn.postTime,
+        packageName = packageName,
+        appName = appName,
+        messages = messages,
+        conversationTitle = extras.getString(Notification.EXTRA_CONVERSATION_TITLE) ?: ""
+    )
+}
+
+fun isNotificationLive(sbn: StatusBarNotification): Boolean {
+    val notification = sbn.notification
+    val extras = notification.extras
+    val isOngoingFlag = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
+    val hasChronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER)
+    val hasProgressBar = extras.containsKey(Notification.EXTRA_PROGRESS)
+    return isOngoingFlag || hasChronometer || hasProgressBar
 }

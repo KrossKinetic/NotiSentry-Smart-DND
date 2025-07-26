@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose) // Use the latest stable version
     implementation(libs.coil.compose) // Use the latest version
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.protolite.well.known.types)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -78,4 +79,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.tasks.genai)
+
+    // The dependencies for Firebase AI
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.ai)
+
+    //Gson to store list of messages
+    implementation(libs.gson)
 }

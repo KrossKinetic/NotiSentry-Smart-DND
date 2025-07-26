@@ -2,9 +2,11 @@ package com.krosskinetic.notisentry.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 
 
-@Database(entities = [AppNotifications::class, AppWhitelist::class, AppNotificationSummary::class], version = 1, exportSchema = false)
+@Database(entities = [AppNotifications::class, AppWhitelist::class, AppNotificationSummary::class], version = 2, exportSchema = false)
+@TypeConverters(Converters::class) // Used to convert List<> inside NotificationDao to gson and back
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun whitelistDao(): AppWhitelistDao

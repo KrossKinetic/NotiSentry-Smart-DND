@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,6 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -42,9 +44,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
+import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.AppWhitelist
 
 @Composable
@@ -119,7 +123,15 @@ fun AppCard(appName: String, image: Drawable, anExecutableFunction: () -> Unit, 
  * */
 
 @Composable
-fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> String, savedSummaries: List<AppNotificationSummary>, summaryToday: List<AppNotificationSummary>, summaryYesterday: List<AppNotificationSummary>, summaryArchive: List<AppNotificationSummary>, modifier: Modifier = Modifier){
+fun SummariesScreen(anExecutableFunction: () -> Unit,
+                    timeConverter: (Long) -> String,
+                    savedSummaries: List<AppNotificationSummary>,
+                    summaryToday: List<AppNotificationSummary>,
+                    summaryYesterday: List<AppNotificationSummary>,
+                    summaryArchive: List<AppNotificationSummary>,
+                    modifier: Modifier = Modifier,
+                    allNotifFunc: (startTime: Long, endTime: Long) -> Unit,
+                    newScreen: () -> Unit){
     LaunchedEffect(savedSummaries) { /** LaunchedEffect only processes the change when key changes, key = unit so it only happens once because unit == void and it never changes */
         anExecutableFunction() /** Updates uiState, triggering recomposition */
     }
@@ -128,7 +140,9 @@ fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> S
     var showSummaryYesterday by remember { mutableStateOf(false) }
     var showSummaryArchive by remember { mutableStateOf(false) }
 
-    LazyColumn(modifier = modifier.fillMaxSize().padding(10.dp)) {
+    LazyColumn(modifier = modifier
+        .fillMaxSize()
+        .padding(10.dp)) {
         // --- TODAY'S SECTION ---
         if (summaryToday.isNotEmpty()) {
             item {
@@ -166,7 +180,7 @@ fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> S
                     )
                 ) {
                     Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp))
+                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
                     }
                 }
             }
@@ -210,7 +224,7 @@ fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> S
                     )
                 ) {
                     Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp))
+                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
                     }
                 }
             }
@@ -254,7 +268,7 @@ fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> S
                     )
                 ) {
                     Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp))
+                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
                     }
                 }
             }
@@ -263,12 +277,14 @@ fun SummariesScreen(anExecutableFunction: () -> Unit, timeConverter: (Long) -> S
 }
 
 @Composable
-fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier){
+fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier, allNotifFunc: () -> Unit, newScreen: () -> Unit){
     Card (modifier = modifier
         .fillMaxWidth()
         .padding(top = 15.dp),
         shape = RoundedCornerShape(8.dp)) {
-        Row (modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceAround) {
+        Row (modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceAround) {
             AssistChip(
                 onClick = {},
                 label = {Text(text = "From: $timestampStart")},
@@ -281,15 +297,108 @@ fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: Strin
         Text(
             text = notiText,
             modifier = Modifier
-                .padding(10.dp).padding(bottom = 0.dp)
+                .padding(10.dp)
+                .padding(bottom = 0.dp)
                 .fillMaxWidth()
         )
-        Row (modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceAround) {
-            Button(onClick = {/* TODO */}, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
+        Row (modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp), horizontalArrangement = Arrangement.SpaceAround) {
+            Button(onClick = {
+                allNotifFunc()
+                newScreen()
+            }, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
                 Text(text = "See All Notifications")
             }
             Button(onClick = {/* TODO */}, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
                 Text(text = "Delete Summary")
+            }
+        }
+    }
+}
+
+@Composable
+fun FilteredNotifsScreen(
+    modifier: Modifier = Modifier,
+    notifs: List<AppNotifications>,
+    timeConverter: (Long) -> String,
+    newScreen: () -> Unit,
+    getAppIcon: (String) -> Drawable?
+) {
+    Column(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp)
+                .weight(1f) // Let the list take available space
+        ) {
+            items(notifs) { notif ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        // --- Header: Icon, App Name, and Time ---
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = getAppIcon(notif.packageName),
+                                contentDescription = "${notif.appName} icon",
+                                modifier = Modifier.size(32.dp),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            // Use the pre-fetched appName from the notif object
+                            Text(
+                                text = "${notif.appName} • ${timeConverter(notif.timestamp)}",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val displayTitle = notif.conversationTitle.ifBlank { notif.title }
+
+                        if (displayTitle.isNotBlank()) {
+                            Text(
+                                text = displayTitle,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
+                        // **Correct Logic:** Prioritize messages list, then fallback to text
+                        if (notif.messages.isNotEmpty()) {
+                            // Display each message for chat-style notifications
+                            Column {
+                                notif.messages.forEach { message ->
+                                    Text(text = "${message.sender}: ${message.text}")
+                                }
+                            }
+                        } else if (notif.text.isNotBlank()) {
+                            // Display the main text for standard notifications
+                            Text(text = notif.text)
+                        } else {
+                            // Fallback if there is no displayable content
+                            Text(text = "No content to display.")
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Bottom Button ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(onClick = { newScreen() }) {
+                Text(text = "Go Back")
             }
         }
     }
@@ -302,12 +411,19 @@ fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: Strin
  * */
 
 @Composable
-fun StartScreen(startStopFnc: () -> Unit, start: Boolean, modifier: Modifier = Modifier){
+fun StartScreen(
+    startStopFnc: () -> Unit,
+    start: Boolean,
+    modifier: Modifier = Modifier,
+    useSmartCategorization: () -> Unit,
+    useSmartBoolean: Boolean,
+    goToSmartScreenCategorization: () -> Unit
+){
 
 
     Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
 
-        UseSmartNotificationFilter(modifier)
+        UseSmartNotificationFilter(modifier, useSmartCategorization, useSmartBoolean, navScreen = goToSmartScreenCategorization)
 
         UseGeminiFlash(modifier)
 
@@ -325,7 +441,7 @@ fun StartScreen(startStopFnc: () -> Unit, start: Boolean, modifier: Modifier = M
 }
 
 @Composable
-fun UseSmartNotificationFilter(modifier: Modifier = Modifier){
+fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategorization: () -> Unit, useSmartBoolean: Boolean, navScreen: () -> Unit){
     Card (modifier = modifier
         .padding(10.dp)
         .fillMaxWidth()
@@ -334,9 +450,12 @@ fun UseSmartNotificationFilter(modifier: Modifier = Modifier){
 
         Row (modifier = Modifier.fillMaxSize()) {
 
-            Row (modifier = Modifier.weight(1f).fillMaxHeight().clickable(onClick = {
-                /* TODO */
-            })) {
+            Row (modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clickable(onClick = {
+                    navScreen()
+                })) {
                 Text(
                     text = "Use Smart Notification Categorization",
                     modifier = Modifier
@@ -355,13 +474,17 @@ fun UseSmartNotificationFilter(modifier: Modifier = Modifier){
                 )
             }
 
-            VerticalDivider(modifier = Modifier.padding(all = 10.dp).padding(start = 0.dp))
+            VerticalDivider(modifier = Modifier
+                .padding(all = 10.dp)
+                .padding(start = 0.dp))
 
             Switch(
-                checked = false,
-                onCheckedChange = {},
+                checked = useSmartBoolean,
+                onCheckedChange = {
+                    updateSmartCategorization()
+                },
                 modifier = Modifier
-                    .padding(end=10.dp)
+                    .padding(end = 10.dp)
                     .align(Alignment.CenterVertically)
             )
         }
@@ -391,9 +514,39 @@ fun UseGeminiFlash(modifier: Modifier = Modifier){
                 checked = false,
                 onCheckedChange = {},
                 modifier = Modifier
-                    .padding(end=10.dp)
+                    .padding(end = 10.dp)
                     .align(Alignment.CenterVertically)
             )
+        }
+    }
+}
+
+/*
+*
+* Below is the screen for setting up the text for smart-categorization
+*
+*  */
+
+@Composable
+fun SmartCategorizationScreen(modifier: Modifier = Modifier, goBack: () -> Unit, text: String, updateText: (String) -> Unit){
+    Column (horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top, modifier = Modifier.fillMaxSize() ) {
+
+        var textLocal by remember { mutableStateOf(text) }
+
+        OutlinedTextField(
+            value = textLocal,
+            onValueChange = { textLocal = it },
+            label = { Text("Enter Intent for filtering")},
+            placeholder = { Text("eg. 'Don't let any apps through except Clash of Clans', 'Do not let Facebook through, rest are fine.' ") },
+            modifier = modifier.padding(10.dp).fillMaxWidth()
+        )
+
+        Spacer(modifier = modifier.weight(0.8f))
+
+        Button(onClick = {
+            updateText(textLocal)
+            goBack()}, modifier = modifier.padding(10.dp)) {
+            Text(text = "Done")
         }
     }
 }
