@@ -11,10 +11,9 @@ I originally planned to use Gemini Nano for its on-device capabilities, but due 
 * **Intelligent Summarization**: Utilizes cloud-based AI (**Gemini-Flash-2.5** via **Firebase Functions**) to generate concise, bullet-pointed summaries of all blocked notifications.
 * **Organized Summary View**: Blocked notification summaries are neatly categorized by day ("Today," "Yesterday," and "Archives") in an expandable list for easy viewing.
 * **Persistent History**: All blocked notifications and generated summaries are saved persistently on the device using a Room database, and optionally synchronized with **Firebase Firestore** for cloud backup and multi-device access.
-* **Modern, Clean UI**: Built entirely with Jetpack Compose and Material 3 design principles for a beautiful and intuitive user experience.
+* **Modern, Clean UI**: Built entirely with Jetpack Compose and Material 3 Expressive design principles for a beautiful and intuitive user experience.
 * **Scalable and Feature-Rich**: Leveraging cloud-based infrastructure offers several pros:
     * **Enhanced AI Capabilities**: Access to more powerful and up-to-date AI models like Gemini-Flash-2.5 without relying on device-specific hardware.
-    * **Cross-Device Synchronization**: Seamlessly sync notification data and settings across multiple devices using Firebase.
     * **Reduced On-Device Footprint**: Offloading heavy AI processing and data storage to the cloud can reduce the app's size and resource consumption on the user's device.
     * **Easier Updates and Maintenance**: AI model updates and bug fixes can be deployed to the cloud without requiring app updates.
     * **Analytics and Insights**: Firebase provides robust analytics tools to understand app usage and performance.
