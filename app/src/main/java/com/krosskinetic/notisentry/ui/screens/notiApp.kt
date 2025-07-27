@@ -37,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
@@ -44,12 +45,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.AsyncImage
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.AppWhitelist
+import compose_util.BannerAd
+
 
 @Composable
 fun FocusRules(updateWhitelistedApps: (String) -> Unit, updateListOfAppDetails: () -> Unit, whitelistedApps: List<AppWhitelist>, appDetailList: List<AppDetails>, modifier: Modifier = Modifier){
@@ -422,6 +429,27 @@ fun StartScreen(
 
 
     Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
+
+        val context = LocalContext.current
+
+        // Init the adview
+        val adView = remember {
+            AdView(context).apply {
+                adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                setAdSize(AdSize.BANNER)
+                loadAd(AdRequest.Builder().build())
+            }
+        }
+
+        // Kill when the ad goes out of picture to save battery
+        DisposableEffect(Unit) {
+            onDispose {
+                adView.destroy() // Crucial for releasing resources and preventing memory leaks
+            }
+        }
+
+
+        BannerAd(adView= adView, modifier = Modifier.padding(10.dp))
 
         UseSmartNotificationFilter(modifier, useSmartCategorization, useSmartBoolean, navScreen = goToSmartScreenCategorization)
 

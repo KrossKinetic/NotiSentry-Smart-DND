@@ -1,5 +1,6 @@
 package com.krosskinetic.notisentry
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -178,6 +179,7 @@ class AppViewModel @Inject constructor(
         return AppDetails(appName, icon, packageName)
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     fun updateListOfAppDetails(context: Context) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -250,7 +252,7 @@ class AppViewModel @Inject constructor(
     }
 
 
-    fun startStopFunc(context: Context) {
+    fun startStopFunc() {
         viewModelScope.launch {
             if (uiState.value.startService){
                 Log.d("NotiSentryAI", "Stopping service")

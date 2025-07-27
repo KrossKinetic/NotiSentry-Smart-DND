@@ -87,4 +87,7 @@ dependencies {
 
     //Gson to store list of messages
     implementation(libs.gson)
+
+    //Admob
+    implementation(libs.play.services.ads)
 }

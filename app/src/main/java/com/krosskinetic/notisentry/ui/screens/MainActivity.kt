@@ -37,10 +37,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.google.android.gms.ads.MobileAds
 import com.krosskinetic.notisentry.AppViewModel
 import com.krosskinetic.notisentry.ui.theme.NotiSentryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 
 @HiltAndroidApp
@@ -50,6 +54,12 @@ class MyApp : Application()
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Admob
+        CoroutineScope(Dispatchers.IO).launch {
+            MobileAds.initialize(this@MainActivity) {}
+        }
+
         enableEdgeToEdge()
         setContent {
             NotiSentryTheme {
@@ -70,7 +80,7 @@ sealed class Screen(val route: String, val icon: ImageVector) {
 
     object Loading : Screen("Loading", Icons.Default.Info)
 
-    object smartCategorizationScreen : Screen("Loading", Icons.Default.Info)
+    object SmartCategorizationScreen : Screen("Loading", Icons.Default.Info)
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -203,11 +213,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     animationSpec = tween(durationMillis = 400)
                 )}) {
                 StartScreen(
-                    startStopFnc = { appViewModel.startStopFunc(context) },
+                    startStopFnc = { appViewModel.startStopFunc() },
                     start = uiState.startService,
                     useSmartCategorization = { appViewModel.updateSmartCategorization() },
                     useSmartBoolean = uiState.useSmartCategorization,
-                    goToSmartScreenCategorization = {navController.navigate(Screen.smartCategorizationScreen.route)}
+                    goToSmartScreenCategorization = {navController.navigate(Screen.SmartCategorizationScreen.route)}
                 )
             }
             composable(Screen.Summaries.route,
@@ -248,7 +258,7 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     getAppIcon = { appViewModel.getAppIconByPackageName(context, it) },
                 )
             }
-            composable(Screen.smartCategorizationScreen.route,
+            composable(Screen.SmartCategorizationScreen.route,
                 enterTransition = { slideIntoContainer(
                     animationSpec = tween(durationMillis = 500),
                     towards = AnimatedContentTransitionScope.SlideDirection.Left,
