@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,16 +35,18 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -56,7 +56,7 @@ import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.AppWhitelist
 import compose_util.BannerAd
-
+import com.krosskinetic.notisentry.BuildConfig
 
 @Composable
 fun FocusRules(updateWhitelistedApps: (String) -> Unit, updateListOfAppDetails: () -> Unit, whitelistedApps: List<AppWhitelist>, appDetailList: List<AppDetails>, modifier: Modifier = Modifier){
@@ -432,10 +432,16 @@ fun StartScreen(
 
         val context = LocalContext.current
 
+        val adUnitIdOther = if (BuildConfig.DEBUG) {
+            BuildConfig.ADMOB_BANNER_UNIT_ID_DEBUG
+        } else {
+            BuildConfig.ADMOB_BANNER_UNIT_ID_RELEASE
+        }
+
         // Init the adview
         val adView = remember {
             AdView(context).apply {
-                adUnitId = "ca-app-pub-3940256099942544/6300978111"
+                adUnitId = adUnitIdOther
                 setAdSize(AdSize.BANNER)
                 loadAd(AdRequest.Builder().build())
             }
