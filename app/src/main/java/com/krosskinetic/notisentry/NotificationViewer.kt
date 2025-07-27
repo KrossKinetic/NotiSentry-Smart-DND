@@ -58,7 +58,7 @@ class NotiSentryService : NotificationListenerService() {
             }
 
             serviceScope.launch {
-                if (!repository.isAppWhitelisted(packageName) && settingsRepository.startServiceFlow.first() && !isNotificationLive(sbn)) {
+                if (repository.isAppBlacklisted(packageName) && settingsRepository.startServiceFlow.first() && !isNotificationLive(sbn)) {
                     cancelNotification(sbn.key)
 
                     var allow = false

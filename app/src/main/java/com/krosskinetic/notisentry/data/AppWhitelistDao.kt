@@ -9,18 +9,18 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AppWhitelistDao {
 
-    @Query("SELECT COUNT(*) FROM whitelist_apps WHERE packageName = :appPackage")
-    suspend fun isWhitelisted(appPackage: String): Int
+    @Query("SELECT COUNT(*) FROM blacklist_apps WHERE packageName = :appPackage")
+    suspend fun isBlacklisted(appPackage: String): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun addToWhitelist(app: AppWhitelist)
+    suspend fun addToBlacklist(app: AppBlacklist)
 
-    @Query("DELETE FROM whitelist_apps WHERE packageName = :appPackage")
-    suspend fun removeFromWhitelist(appPackage: String)
+    @Query("DELETE FROM blacklist_apps WHERE packageName = :appPackage")
+    suspend fun removeFromBlacklist(appPackage: String)
 
-    @Query("SELECT * FROM whitelist_apps")
-    fun getAllWhitelistedApps(): Flow<List<AppWhitelist>>
+    @Query("SELECT * FROM blacklist_apps")
+    fun getAllBlacklistedApps(): Flow<List<AppBlacklist>>
 
-    @Query("DELETE FROM whitelist_apps")
+    @Query("DELETE FROM blacklist_apps")
     suspend fun clearAll()
 }

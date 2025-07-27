@@ -199,10 +199,10 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     animationSpec = tween(durationMillis = 400)
                 )}) {
                 FocusRules(
-                    whitelistedApps = uiState.whitelistedApps,
+                    blacklistedApps = uiState.blacklistedApps,
                     appDetailList = uiState.appDetailList,
                     updateListOfAppDetails = { appViewModel.updateListOfAppDetails(context) },
-                    updateWhitelistedApps = { appViewModel.updateWhitelistedApps(it) })
+                    updateBlacklistedApps = { appViewModel.updateBlacklistedApps(it) })
             }
             composable(Screen.Play.route,
                 enterTransition = { slideIntoContainer(

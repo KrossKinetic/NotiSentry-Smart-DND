@@ -15,7 +15,7 @@ import com.google.firebase.ai.type.GenerativeBackend
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
-import com.krosskinetic.notisentry.data.AppWhitelist
+import com.krosskinetic.notisentry.data.AppBlacklist
 import com.krosskinetic.notisentry.data.NotificationRepository
 import com.krosskinetic.notisentry.data.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,7 +38,7 @@ import javax.inject.Inject
 data class AppUiState( // A Blueprint of everything UI needs to display at a certain moment
     // User app preference and data, need to be managed by DAO
     val blockedNotifications: List<AppNotifications> = emptyList(),
-    val whitelistedApps: List<AppWhitelist> = emptyList(),
+    val blacklistedApps: List<AppBlacklist> = emptyList(),
     val savedSummaries: List<AppNotificationSummary> = emptyList(),
 
     // Non-persistent data, should be recreated everytime app/screen is opened. No need to save
@@ -140,10 +140,10 @@ class AppViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            repository.whiteListedAppsFlow.collect { whitelistedApps ->
+            repository.blackListedAppsFlow.collect { blacklistedApps ->
                 _uiState.update { currentState ->
                     currentState.copy(
-                        whitelistedApps = whitelistedApps
+                        blacklistedApps = blacklistedApps
                     )
                 }
             }
@@ -203,15 +203,15 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    fun updateWhitelistedApps(appPackage: String) {
-        val currentWhitelist = _uiState.value.whitelistedApps
+    fun updateBlacklistedApps(appPackage: String) {
+        val currentWhitelist = _uiState.value.blacklistedApps
         val appIsInList = currentWhitelist.any { it.packageName == appPackage }
 
         viewModelScope.launch {
             if (appIsInList) {
-                repository.removeFromWhitelist(appPackage)
+                repository.removeFromBlacklist(appPackage)
             } else {
-                repository.addToWhitelist(appPackage)
+                repository.addToBlacklist(appPackage)
             }
         }
     }

@@ -10,8 +10,8 @@ data class AppDetails(
     val packageName: String
 )
 
-@Entity(tableName = "whitelist_apps")
-data class AppWhitelist(
+@Entity(tableName = "blacklist_apps")
+data class AppBlacklist(
     @PrimaryKey val packageName: String
 )
 

@@ -54,18 +54,18 @@ import com.google.android.gms.ads.AdView
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
-import com.krosskinetic.notisentry.data.AppWhitelist
 import compose_util.BannerAd
 import com.krosskinetic.notisentry.BuildConfig
+import com.krosskinetic.notisentry.data.AppBlacklist
 
 @Composable
-fun FocusRules(updateWhitelistedApps: (String) -> Unit, updateListOfAppDetails: () -> Unit, whitelistedApps: List<AppWhitelist>, appDetailList: List<AppDetails>, modifier: Modifier = Modifier){
+fun FocusRules(updateBlacklistedApps: (String) -> Unit, updateListOfAppDetails: () -> Unit, blacklistedApps: List<AppBlacklist>, appDetailList: List<AppDetails>, modifier: Modifier = Modifier){
     LaunchedEffect(Unit) { /** LaunchedEffect only processes the change when key changes, key = unit so it only happens once because unit == void and it never changes */
         updateListOfAppDetails() /** Updates uiState, triggering recomposition */
     }
 
-    val whitelistedSet = remember(whitelistedApps) { // As long as whitelistedApps doesn't change, no need to recompose
-        whitelistedApps.map { it.packageName }.toSet()
+    val whitelistedSet = remember(blacklistedApps) { // As long as blacklistedApps doesn't change, no need to recompose
+        blacklistedApps.map { it.packageName }.toSet()
     }
 
     val appDetailsList = appDetailList
@@ -78,7 +78,7 @@ fun FocusRules(updateWhitelistedApps: (String) -> Unit, updateListOfAppDetails: 
             AppCard(
                 appName = item.appName,
                 image = item.icon,
-                anExecutableFunction = {updateWhitelistedApps(item.packageName)},
+                anExecutableFunction = {updateBlacklistedApps(item.packageName)},
                 checked = isChecked
             )
         }
