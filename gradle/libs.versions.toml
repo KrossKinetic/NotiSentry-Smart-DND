@@ -68,7 +68,6 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
 tasks-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "tasksGenai" }
 protolite-well-known-types = { group = "com.google.firebase", name = "protolite-well-known-types", version.ref = "protoliteWellKnownTypes" }
-androidx-material3-jvmstubs = { group = "androidx.compose.material3", name = "material3-jvmstubs", version.ref = "material3Jvmstubs" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

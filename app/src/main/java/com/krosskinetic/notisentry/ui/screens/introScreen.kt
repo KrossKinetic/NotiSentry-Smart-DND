@@ -3,9 +3,7 @@ package com.krosskinetic.notisentry.ui.screens
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
