@@ -1,5 +1,6 @@
 package com.krosskinetic.notisentry
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -54,7 +55,8 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     val useSmartCategorization: Boolean = false,
     val startServiceTime: Long = 0,
     val endServiceTime: Long = 0,
-    val smartCategorizationString: String = ""
+    val smartCategorizationString: String = "",
+    val autoDeleteValue: Int = 0
 )
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -68,6 +70,16 @@ class AppViewModel @Inject constructor(
 
     init {
         _uiState.value = AppUiState()
+
+        viewModelScope.launch {
+            settingsRepository.startAutDeleteKeyFlow.collect { newAutoDeleteKey->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        autoDeleteValue = newAutoDeleteKey
+                    )
+                }
+            }
+        }
 
         viewModelScope.launch {
             settingsRepository.startSmartCategorizationStringFlow.collect { newString ->
@@ -159,6 +171,12 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    fun updateAutoDeleteKey(key: Int){
+        viewModelScope.launch {
+            settingsRepository.saveAutoDeleteKey(key)
+        }
+    }
+
     fun formatTimestampToTime(timestamp: Long): String {
         val formatter = DateTimeFormatter.ofPattern("MM/dd/yy h:mm a", Locale.US)
         val instant = Instant.ofEpochMilli(timestamp)
@@ -188,10 +206,21 @@ class AppViewModel @Inject constructor(
                     context.packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
                 for (app in allInstalledApps) {
-                    val details = getAppDetailsFromPackageName(context, app.packageName)
-                    if (details != null) {
-                        appDetailsList.add(details)
-                    }
+                    try {
+                        val packageInfo = context.packageManager.getPackageInfo(
+                            app.packageName,
+                            PackageManager.GET_PERMISSIONS
+                        )
+
+                        val declaredPermissions = packageInfo.requestedPermissions
+
+                        if (declaredPermissions != null && declaredPermissions.contains(Manifest.permission.POST_NOTIFICATIONS)) {
+                            val details = getAppDetailsFromPackageName(context, app.packageName)
+                            if (details != null) {
+                                appDetailsList.add(details)
+                            }
+                        }
+                    } catch(_: Exception){}
                 }
 
                 _uiState.update { currentState ->
@@ -204,8 +233,8 @@ class AppViewModel @Inject constructor(
     }
 
     fun updateBlacklistedApps(appPackage: String) {
-        val currentWhitelist = _uiState.value.blacklistedApps
-        val appIsInList = currentWhitelist.any { it.packageName == appPackage }
+        val currentBlacklist = _uiState.value.blacklistedApps
+        val appIsInList = currentBlacklist.any { it.packageName == appPackage }
 
         viewModelScope.launch {
             if (appIsInList) {
@@ -400,6 +429,14 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.saveSmartCategorizationStringTime(string)
             Log.d("NotiSentryAI", "Updated smart categorization string: ${settingsRepository.startSmartCategorizationStringFlow.first()}")
+        }
+    }
+
+    fun deleteOldNotificationsSummaries(){
+        val timestamp = System.currentTimeMillis() - (uiState.value.autoDeleteValue * 24 * 60 * 60 * 1000)
+        viewModelScope.launch {
+            repository.deleteOldSummaries(timestamp)
+            repository.deleteOldNotifications(timestamp)
         }
     }
 }

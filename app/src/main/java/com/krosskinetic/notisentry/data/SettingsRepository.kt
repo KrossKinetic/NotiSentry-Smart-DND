@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -26,6 +27,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     private val SMART_CATEGORIZATION_STRING_KEY = stringPreferencesKey("smart_categorization_string")
 
+    private val AUTO_DELETE_KEY = intPreferencesKey("auto_delete_key")
+
+    val startAutDeleteKeyFlow: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[AUTO_DELETE_KEY] ?: 3
+        }
     val startUseSmartCategorizationFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[USE_SMART_CATEGORIZATION_KEY] ?: false
@@ -54,6 +61,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         .map { preferences ->
             preferences[INTRO_DONE_KEY] ?: false
         }
+
+    suspend fun saveAutoDeleteKey(key: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_DELETE_KEY] = key
+        }
+    }
 
     suspend fun saveIsStarted(isStarted: Boolean) {
         context.dataStore.edit { preferences ->

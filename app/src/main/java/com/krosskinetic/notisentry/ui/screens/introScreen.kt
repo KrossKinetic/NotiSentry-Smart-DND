@@ -1,7 +1,13 @@
 package com.krosskinetic.notisentry.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,11 +22,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 
 @Composable
 fun IntroScreenWelcome(onGetStartedClicked: () -> Unit, modifier: Modifier = Modifier){
@@ -48,7 +62,12 @@ fun IntroScreenWelcome(onGetStartedClicked: () -> Unit, modifier: Modifier = Mod
 }
 
 @Composable
-fun IntroScreenPermission(isGranted: Boolean, onPermissionClicked: () -> Unit, modifier: Modifier = Modifier){
+fun IntroScreenPermission(isGrantedFn: ()->Boolean, onPermissionClicked: () -> Unit, modifier: Modifier = Modifier){
+    var isGrantedLocal by remember { mutableStateOf(false) }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isGrantedLocal = isGrantedFn()
+    }
 
     val context = LocalContext.current
 
@@ -61,14 +80,15 @@ fun IntroScreenPermission(isGranted: Boolean, onPermissionClicked: () -> Unit, m
         Text(
             text = "To intelligently filter notifications and create summaries, the app needs \"Notification Access\".\n" +
                     "\n" +
-                    "This permission allows the app to see and manage incoming alerts. We take your privacy seriously—all processing happens securely on your phone and never leaves it. \n\n" +
-                    "Once the permission is granted, a button will appear below to proceed.",
+                    "This permission allows the app to see and manage incoming alerts. We take your privacy seriously—all processing happens securely through Google's end-to-end encrypted Firebase API, and are automatically deleted after 3 days (You can change that later). \n\n" +
+                    "We also need permission to send notifications so we can notify you using our NotiSentry Intent Feature.\n\n" +
+                    "Once the permission to read notification is granted, a button will appear below to continue. Next, give the app permission to send notifications.",
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
         Spacer(modifier = Modifier.padding(10.dp))
         Row {
-            if (isGranted){
+            if (isGrantedLocal){
                 Button(
                     onClick = { onPermissionClicked() },
                     modifier = Modifier.padding(10.dp),
@@ -98,8 +118,36 @@ fun IntroScreenPermission(isGranted: Boolean, onPermissionClicked: () -> Unit, m
 }
 
 @Composable
-fun IntroScreenAllDone(onGetAllDoneClicked: () -> Unit, updateIntroDone: () -> Unit, modifier: Modifier = Modifier){
-    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+fun IntroScreenAllDone(onGetAllDoneClicked: () -> Unit, updateIntroDone: () -> Unit, modifier: Modifier = Modifier) {
+
+    val context = LocalContext.current
+    var permissionRequestLaunched by remember { mutableStateOf(false) }
+
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = {}
+    )
+
+    LaunchedEffect(Unit) {
+        if (!permissionRequestLaunched) {
+            val isPermissionGranted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!isPermissionGranted) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                permissionRequestLaunched = true
+            }
+        }
+    }
+
+
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
         Icon(
             imageVector = Icons.TwoTone.CheckCircle,
             contentDescription = "Check Circle"

@@ -33,4 +33,13 @@ class NotificationRepository @Inject constructor(private val notificationDao: No
     suspend fun addToSavedSummary(summaryText: String, startTimestamp: Long, endTimestamp: Long) {
         summaryDao.addToSummaries(AppNotificationSummary(summaryText = summaryText, startTimestamp = startTimestamp, endTimestamp = endTimestamp))
     }
+
+    suspend fun deleteOldSummaries(timestamp: Long) {
+        summaryDao.deleteSavedSummaries(timestamp)
+    }
+
+    suspend fun deleteOldNotifications(timestamp: Long) {
+        notificationDao.deleteSavedNotifications(timestamp)
+    }
+
 }

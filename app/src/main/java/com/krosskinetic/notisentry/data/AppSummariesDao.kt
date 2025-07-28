@@ -14,6 +14,9 @@ interface AppSummariesDao {
     @Query("DELETE FROM saved_summaries WHERE id = :summaryId")
     suspend fun removeFromSavedSummaries(summaryId: Int)
 
+    @Query("DELETE FROM saved_summaries WHERE endTimestamp < :timestamp")
+    suspend fun deleteSavedSummaries(timestamp: Long)
+
     @Query("SELECT * FROM saved_summaries ORDER BY startTimestamp DESC")
     fun getAllSavedSummaries(): Flow<List<AppNotificationSummary>>
 

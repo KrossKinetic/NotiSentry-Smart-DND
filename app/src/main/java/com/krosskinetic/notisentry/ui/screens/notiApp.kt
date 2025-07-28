@@ -6,7 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +21,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ExpandLess
@@ -27,11 +31,15 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -44,9 +52,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -57,30 +75,67 @@ import com.krosskinetic.notisentry.data.AppNotifications
 import compose_util.BannerAd
 import com.krosskinetic.notisentry.BuildConfig
 import com.krosskinetic.notisentry.data.AppBlacklist
+import kotlin.math.roundToInt
 
 @Composable
 fun FocusRules(updateBlacklistedApps: (String) -> Unit, updateListOfAppDetails: () -> Unit, blacklistedApps: List<AppBlacklist>, appDetailList: List<AppDetails>, modifier: Modifier = Modifier){
-    LaunchedEffect(Unit) { /** LaunchedEffect only processes the change when key changes, key = unit so it only happens once because unit == void and it never changes */
-        updateListOfAppDetails() /** Updates uiState, triggering recomposition */
+    // Search
+    var searchQuery by remember { mutableStateOf("") }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        updateListOfAppDetails() /** Updates uiState to get list of new apps everytime the user backs out and app resumes, triggering recomposition */
+        searchQuery = ""
     }
 
     val whitelistedSet = remember(blacklistedApps) { // As long as blacklistedApps doesn't change, no need to recompose
         blacklistedApps.map { it.packageName }.toSet()
     }
 
-    val appDetailsList = appDetailList
-    LazyColumn (modifier = modifier) {
-        items(appDetailsList){
-            item ->
 
-            val isChecked = whitelistedSet.contains(item.packageName)
+    // Filtered list based on search query
+    val appDetailsList = remember(searchQuery, appDetailList) {
+        if (searchQuery.isBlank()) {
+            appDetailList
+        } else {
+            appDetailList.filter {
+                it.appName.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
-            AppCard(
-                appName = item.appName,
-                image = item.icon,
-                anExecutableFunction = {updateBlacklistedApps(item.packageName)},
-                checked = isChecked
-            )
+
+    Column (modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            placeholder = {Text(text="eg. Instagram")},
+            label = {Text(text="Search Apps")}
+        )
+
+        if (appDetailsList.isNotEmpty()){
+            LazyColumn(modifier = modifier) {
+                items(appDetailsList) { item ->
+
+                    val isChecked = whitelistedSet.contains(item.packageName)
+
+                    AppCard(
+                        appName = item.appName,
+                        image = item.icon,
+                        anExecutableFunction = { updateBlacklistedApps(item.packageName) },
+                        checked = isChecked
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
         }
     }
 }
@@ -147,138 +202,179 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
     var showSummaryYesterday by remember { mutableStateOf(false) }
     var showSummaryArchive by remember { mutableStateOf(false) }
 
-    LazyColumn(modifier = modifier
-        .fillMaxSize()
-        .padding(10.dp)) {
-        // --- TODAY'S SECTION ---
-        if (summaryToday.isNotEmpty()) {
-            item {
-                Row (modifier = Modifier.padding(top = 5.dp)) {
-                    Text(
-                        text = "Today",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(top = 10.dp)
-                    )
-                    Spacer(modifier = Modifier.weight(0.8f))
-                    IconButton(
-                        onClick = {
-                            showSummaryToday = !showSummaryToday
-                            showSummaryYesterday = false
-                            showSummaryArchive = false
-                                  },
-                    ) {
-                        Icon(
-                            imageVector = if (showSummaryToday) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = "Show/Hide"
+    if (!savedSummaries.isEmpty()){
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(10.dp)
+        ) {
+            // --- TODAY'S SECTION ---
+            if (summaryToday.isNotEmpty()) {
+                item {
+                    Row(modifier = Modifier.padding(top = 5.dp)) {
+                        Text(
+                            text = "Today",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(top = 10.dp)
                         )
+                        Spacer(modifier = Modifier.weight(0.8f))
+                        IconButton(
+                            onClick = {
+                                showSummaryToday = !showSummaryToday
+                                showSummaryYesterday = false
+                                showSummaryArchive = false
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (showSummaryToday) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = "Show/Hide"
+                            )
+                        }
+                    }
+                }
+                items(summaryToday) { summary ->
+                    AnimatedVisibility(
+                        visible = showSummaryToday,
+                        enter = expandVertically(
+                            expandFrom = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        ),
+                        exit = shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                    ) {
+                        Column {
+                            AppCardSummary(
+                                notiText = summary.summaryText,
+                                timestampStart = timeConverter(summary.startTimestamp),
+                                timestampEnd = timeConverter(summary.endTimestamp),
+                                allNotifFunc = {
+                                    allNotifFunc(
+                                        summary.startTimestamp,
+                                        summary.endTimestamp
+                                    )
+                                },
+                                newScreen = newScreen
+                            )
+                        }
                     }
                 }
             }
-            items(summaryToday) { summary ->
-                AnimatedVisibility(
-                    visible = showSummaryToday,
-                    enter = expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    ),
-                    exit = shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    )
-                ) {
-                    Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
+
+            // --- YESTERDAY'S SECTION ---
+            if (summaryYesterday.isNotEmpty()) {
+                item {
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(top = 8.dp))
+                    Row(modifier = Modifier.padding(top = 5.dp)) {
+                        Text(
+                            text = "Yesterday",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
+                        Spacer(modifier = Modifier.weight(0.8f))
+                        IconButton(
+                            onClick = {
+                                showSummaryYesterday = !showSummaryYesterday
+                                showSummaryToday = false
+                                showSummaryArchive = false
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (showSummaryYesterday) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = "Show/Hide"
+                            )
+                        }
+                    }
+                }
+                items(summaryYesterday) { summary ->
+                    AnimatedVisibility(
+                        visible = showSummaryYesterday,
+                        enter = expandVertically(
+                            expandFrom = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        ),
+                        exit = shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                    ) {
+                        Column {
+                            AppCardSummary(
+                                notiText = summary.summaryText,
+                                timestampStart = timeConverter(summary.startTimestamp),
+                                timestampEnd = timeConverter(summary.endTimestamp),
+                                allNotifFunc = {
+                                    allNotifFunc(
+                                        summary.startTimestamp,
+                                        summary.endTimestamp
+                                    )
+                                },
+                                newScreen = newScreen
+                            )
+                        }
+                    }
+                }
+            }
+
+            // --- ARCHIVE SECTION ---
+            if (summaryArchive.isNotEmpty()) {
+                item {
+                    HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(top = 8.dp))
+                    Row(modifier = Modifier.padding(top = 5.dp)) {
+                        Text(
+                            text = "Archive",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
+                        Spacer(modifier = Modifier.weight(0.8f))
+                        IconButton(
+                            onClick = {
+                                showSummaryArchive = !showSummaryArchive
+                                showSummaryToday = false
+                                showSummaryYesterday = false
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (showSummaryArchive) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = "Show/Hide"
+                            )
+                        }
+                    }
+                }
+                items(summaryArchive) { summary ->
+                    AnimatedVisibility(
+                        visible = showSummaryArchive,
+                        enter = expandVertically(
+                            expandFrom = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        ),
+                        exit = shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            animationSpec = tween(durationMillis = 300)
+                        )
+                    ) {
+                        Column {
+                            AppCardSummary(
+                                notiText = summary.summaryText,
+                                timestampStart = timeConverter(summary.startTimestamp),
+                                timestampEnd = timeConverter(summary.endTimestamp),
+                                allNotifFunc = {
+                                    allNotifFunc(
+                                        summary.startTimestamp,
+                                        summary.endTimestamp
+                                    )
+                                },
+                                newScreen = newScreen
+                            )
+                        }
                     }
                 }
             }
         }
-
-        // --- YESTERDAY'S SECTION ---
-        if (summaryYesterday.isNotEmpty()) {
-            item {
-                HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(top = 8.dp))
-                Row (modifier = Modifier.padding(top = 5.dp)){
-                    Text(
-                        text = "Yesterday",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(top = 10.dp)
-                    )
-                    Spacer(modifier = Modifier.weight(0.8f))
-                    IconButton(
-                        onClick = {
-                            showSummaryYesterday = !showSummaryYesterday
-                            showSummaryToday = false
-                            showSummaryArchive = false
-                                  },
-                    ) {
-                        Icon(
-                            imageVector = if (showSummaryYesterday) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = "Show/Hide"
-                        )
-                    }
-                }
-            }
-            items(summaryYesterday) { summary ->
-                AnimatedVisibility(
-                    visible = showSummaryYesterday,
-                    enter = expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    ),
-                    exit = shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    )
-                ) {
-                    Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
-                    }
-                }
-            }
-        }
-
-        // --- ARCHIVE SECTION ---
-        if (summaryArchive.isNotEmpty()) {
-            item {
-                HorizontalDivider(thickness = 1.dp, modifier = Modifier.padding(top = 8.dp))
-                Row (modifier = Modifier.padding(top = 5.dp)){
-                    Text(
-                        text = "Archive",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(top = 10.dp)
-                    )
-                    Spacer(modifier = Modifier.weight(0.8f))
-                    IconButton(
-                        onClick = {
-                            showSummaryArchive = !showSummaryArchive
-                            showSummaryToday = false
-                            showSummaryYesterday = false
-                                  },
-                    ) {
-                        Icon(
-                            imageVector = if (showSummaryArchive) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = "Show/Hide"
-                        )
-                    }
-                }
-            }
-            items(summaryArchive) { summary ->
-                AnimatedVisibility(
-                    visible = showSummaryArchive,
-                    enter = expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    ),
-                    exit = shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = tween(durationMillis = 300)
-                    )
-                ) {
-                    Column {
-                        AppCardSummary(notiText = summary.summaryText, timestampStart = timeConverter(summary.startTimestamp), timestampEnd = timeConverter(summary.endTimestamp), allNotifFunc = {allNotifFunc(summary.startTimestamp,summary.endTimestamp)}, newScreen = newScreen)
-                    }
-                }
-            }
+    } else {
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "It's so quiet here...")
         }
     }
 }
@@ -424,11 +520,16 @@ fun StartScreen(
     modifier: Modifier = Modifier,
     useSmartCategorization: () -> Unit,
     useSmartBoolean: Boolean,
-    goToSmartScreenCategorization: () -> Unit
+    goToSmartScreenCategorization: () -> Unit,
+    updateAutoDelete: (Int) -> Unit,
+    autoDelete: Float
 ){
 
+    val scrollState = rememberScrollState()
 
-    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .verticalScroll(scrollState), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
 
         val context = LocalContext.current
 
@@ -459,7 +560,7 @@ fun StartScreen(
 
         UseSmartNotificationFilter(modifier, useSmartCategorization, useSmartBoolean, navScreen = goToSmartScreenCategorization)
 
-        UseGeminiFlash(modifier)
+        SetAutoDelete(curValue = autoDelete, updateAutoDelete = {updateAutoDelete(it)})
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -505,6 +606,7 @@ fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategor
                     modifier = Modifier
                         .padding(start = 10.dp)
                         .align(Alignment.CenterVertically)
+                        .size(18.dp)
                 )
             }
 
@@ -526,34 +628,99 @@ fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategor
 }
 
 @Composable
-fun UseGeminiFlash(modifier: Modifier = Modifier){
+fun SetAutoDelete(modifier: Modifier = Modifier, updateAutoDelete: (Int) -> Unit, curValue: Float){
+
+    var sliderPosition = curValue
+
+    val haptics = LocalHapticFeedback.current
+
     Card (modifier = modifier
         .padding(10.dp)
-        .fillMaxWidth()
-        .height(70.dp),
+        .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp)) {
 
-        Row (modifier = Modifier.fillMaxSize()) {
+        Row (modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(0.75f)) {
+                Text(
+                    text = "Set Auto-Delete Time in Days\nNotifications and Summaries older than this will be deleted automatically.",
+                    modifier = Modifier.padding(10.dp),
+                    textAlign = TextAlign.Center,
+                )
 
-            Text(
-                text = "Use Gemini-Flash-2.5 (Off-Device)",
-                modifier = Modifier
-                    .padding(start = 10.dp)
-                    .align(Alignment.CenterVertically)
-            )
+                Text(
+                    text = sliderPosition.toInt().toString(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 120.sp
+                )
+            }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            Switch(
-                checked = false,
-                onCheckedChange = {},
-                modifier = Modifier
-                    .padding(end = 10.dp)
-                    .align(Alignment.CenterVertically)
-            )
+            Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(0.25f)) {
+                VerticalSlider(
+                    value = sliderPosition,
+                    onValueChange = { newValue ->
+                        updateAutoDelete(newValue.roundToInt())
+                        val oldIntValue = sliderPosition.roundToInt()
+                        val newIntValue = newValue.roundToInt()
+                        sliderPosition = newValue
+                        if (newIntValue != oldIntValue) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    },
+                    valueRange = 1f..30f,
+                    steps = 28,
+                    modifier = Modifier.width(220.dp)
+                )
+            }
         }
     }
 }
+
+// VerticalSlider
+@Composable
+fun VerticalSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    colors: SliderColors = SliderDefaults.colors()
+){
+    Slider(
+        colors = colors,
+        interactionSource = interactionSource,
+        onValueChangeFinished = onValueChangeFinished,
+        steps = steps,
+        valueRange = valueRange,
+        enabled = enabled,
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier
+            .graphicsLayer {
+                rotationZ = 270f
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(
+                    Constraints(
+                        minWidth = constraints.minHeight,
+                        maxWidth = constraints.maxHeight,
+                        minHeight = constraints.minWidth,
+                        maxHeight = constraints.maxHeight,
+                    )
+                )
+                layout(placeable.height, placeable.width) {
+                    placeable.place(-placeable.width, 0)
+                }
+            }
+            .then(modifier)
+    )
+}
+
 
 /*
 *
@@ -572,7 +739,9 @@ fun SmartCategorizationScreen(modifier: Modifier = Modifier, goBack: () -> Unit,
             onValueChange = { textLocal = it },
             label = { Text("Enter Intent for filtering")},
             placeholder = { Text("eg. 'Don't let any apps through except Clash of Clans', 'Do not let Facebook through, rest are fine.' ") },
-            modifier = modifier.padding(10.dp).fillMaxWidth()
+            modifier = modifier
+                .padding(10.dp)
+                .fillMaxWidth()
         )
 
         Spacer(modifier = modifier.weight(0.8f))
@@ -584,3 +753,4 @@ fun SmartCategorizationScreen(modifier: Modifier = Modifier, goBack: () -> Unit,
         }
     }
 }
+

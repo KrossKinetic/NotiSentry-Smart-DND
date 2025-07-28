@@ -58,7 +58,7 @@ class NotiSentryService : NotificationListenerService() {
             }
 
             serviceScope.launch {
-                if (repository.isAppBlacklisted(packageName) && settingsRepository.startServiceFlow.first() && !isNotificationLive(sbn)) {
+                if (repository.isAppBlacklisted(packageName) && settingsRepository.startServiceFlow.first()) {
                     cancelNotification(sbn.key)
 
                     var allow = false
@@ -243,13 +243,4 @@ fun extractNotificationData(sbn: StatusBarNotification, context: Context): AppNo
         messages = messages,
         conversationTitle = extras.getString(Notification.EXTRA_CONVERSATION_TITLE) ?: ""
     )
-}
-
-fun isNotificationLive(sbn: StatusBarNotification): Boolean {
-    val notification = sbn.notification
-    val extras = notification.extras
-    val isOngoingFlag = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
-    val hasChronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER)
-    val hasProgressBar = extras.containsKey(Notification.EXTRA_PROGRESS)
-    return isOngoingFlag || hasChronometer || hasProgressBar
 }

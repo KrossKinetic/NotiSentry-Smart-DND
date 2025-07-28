@@ -5,8 +5,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.activity.viewModels
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,9 @@ class MyApp : Application()
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val appViewModel: AppViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -66,6 +70,11 @@ class MainActivity : ComponentActivity() {
                 MainAppScreen()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        appViewModel.deleteOldNotificationsSummaries() // Deletes old notifications and summaries
     }
 }
 
@@ -153,32 +162,35 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
              * Below are the 3 one-time view intro screen
              * */
             composable(Screen.Welcome.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
                 IntroScreenWelcome({ navController.navigate(Screen.NotiPerm.route) })
             }
             composable(Screen.NotiPerm.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
                 IntroScreenPermission(
-                    appViewModel.isNotificationAccessGranted(context),
+                    {appViewModel.isNotificationAccessGranted(context)},
                     { navController.navigate(Screen.AllDone.route) })
             }
             composable(Screen.AllDone.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
@@ -191,10 +203,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
              * Below are the 3 of the actual screens
              * */
             composable(Screen.FocusRules.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
@@ -205,10 +218,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     updateBlacklistedApps = { appViewModel.updateBlacklistedApps(it) })
             }
             composable(Screen.Play.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
@@ -217,14 +231,17 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     start = uiState.startService,
                     useSmartCategorization = { appViewModel.updateSmartCategorization() },
                     useSmartBoolean = uiState.useSmartCategorization,
-                    goToSmartScreenCategorization = {navController.navigate(Screen.SmartCategorizationScreen.route)}
+                    goToSmartScreenCategorization = {navController.navigate(Screen.SmartCategorizationScreen.route)},
+                    updateAutoDelete = {appViewModel.updateAutoDeleteKey(it)},
+                    autoDelete = uiState.autoDeleteValue.toFloat()
                 )
             }
             composable(Screen.Summaries.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
@@ -242,10 +259,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                 )
             }
             composable(Screen.FilteredNotifs.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
@@ -259,10 +277,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                 )
             }
             composable(Screen.SmartCategorizationScreen.route,
-                enterTransition = { slideIntoContainer(
-                    animationSpec = tween(durationMillis = 500),
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                )},
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 400)
+                    )
+                },
                 exitTransition = { fadeOut(
                     animationSpec = tween(durationMillis = 400)
                 )}) {
