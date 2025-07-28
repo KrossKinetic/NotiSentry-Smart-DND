@@ -23,7 +23,6 @@ playServicesAds = "24.5.0"
 roomVersion = "2.7.2"
 tasksGenai = "0.10.25"
 protoliteWellKnownTypes = "18.0.1"
-material3Jvmstubs = "1.4.0-alpha18"
 
 [libraries]
 # AndroidX Core & Lifecycle
