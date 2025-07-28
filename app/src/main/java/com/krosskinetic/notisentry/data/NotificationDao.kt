@@ -20,6 +20,9 @@ interface NotificationDao {
     @Query("DELETE FROM blocked_notifications")
     suspend fun clearAll()
 
-    @Query("DELETE FROM blocked_notifications WHERE timestamp < :timestamp")
+    @Query("DELETE FROM blocked_notifications WHERE timestamp <= :timestamp")
     suspend fun deleteSavedNotifications(timestamp: Long)
+
+    @Query("DELETE FROM blocked_notifications WHERE timestamp >= :startTimestamp AND timestamp <= :endTimestamp")
+    suspend fun deleteSavedNotifications(startTimestamp: Long, endTimestamp: Long)
 }

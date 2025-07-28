@@ -439,4 +439,10 @@ class AppViewModel @Inject constructor(
             repository.deleteOldNotifications(timestamp)
         }
     }
+
+    fun deleteSummaryWithNotificationFromId(summaryId: Int){
+        viewModelScope.launch {
+            repository.deleteSummaryWithNotification(summaryId)
+        }
+    }
 }

@@ -193,7 +193,8 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
                     summaryArchive: List<AppNotificationSummary>,
                     modifier: Modifier = Modifier,
                     allNotifFunc: (startTime: Long, endTime: Long) -> Unit,
-                    newScreen: () -> Unit){
+                    newScreen: () -> Unit,
+                    deleteSummary: (Int) -> Unit){
     LaunchedEffect(savedSummaries) { /** LaunchedEffect only processes the change when key changes, key = unit so it only happens once because unit == void and it never changes */
         anExecutableFunction() /** Updates uiState, triggering recomposition */
     }
@@ -255,7 +256,10 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
                                         summary.endTimestamp
                                     )
                                 },
-                                newScreen = newScreen
+                                newScreen = newScreen,
+                                deleteSummary = {
+                                    deleteSummary(summary.id)
+                                }
                             )
                         }
                     }
@@ -310,7 +314,10 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
                                         summary.endTimestamp
                                     )
                                 },
-                                newScreen = newScreen
+                                newScreen = newScreen,
+                                deleteSummary = {
+                                    deleteSummary(summary.id)
+                                }
                             )
                         }
                     }
@@ -365,7 +372,10 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
                                         summary.endTimestamp
                                     )
                                 },
-                                newScreen = newScreen
+                                newScreen = newScreen,
+                                deleteSummary = {
+                                    deleteSummary(summary.id)
+                                }
                             )
                         }
                     }
@@ -380,7 +390,7 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
 }
 
 @Composable
-fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier, allNotifFunc: () -> Unit, newScreen: () -> Unit){
+fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier, allNotifFunc: () -> Unit, newScreen: () -> Unit, deleteSummary: () -> Unit){
     Card (modifier = modifier
         .fillMaxWidth()
         .padding(top = 15.dp),
@@ -413,7 +423,9 @@ fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: Strin
             }, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
                 Text(text = "See All Notifications")
             }
-            Button(onClick = {/* TODO */}, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
+            Button(onClick = {
+                deleteSummary()
+            }, modifier = Modifier.padding(5.dp), shape = RoundedCornerShape(8.dp)) {
                 Text(text = "Delete Summary")
             }
         }

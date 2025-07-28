@@ -42,4 +42,10 @@ class NotificationRepository @Inject constructor(private val notificationDao: No
         notificationDao.deleteSavedNotifications(timestamp)
     }
 
+    suspend fun deleteSummaryWithNotification(summaryId: Int) {
+        val summary = summaryDao.getFromSavedSummaries(summaryId)
+        notificationDao.deleteSavedNotifications(summary.startTimestamp, summary.endTimestamp)
+        summaryDao.removeFromSavedSummaries(summaryId)
+    }
+
 }

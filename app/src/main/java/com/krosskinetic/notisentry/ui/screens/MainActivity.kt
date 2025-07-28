@@ -255,7 +255,8 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                         appViewModel.formatTimestampToTime(it)
                     },
                     allNotifFunc = {startTime,endTime -> appViewModel.updateFilteredNotifs(startTime, endTime)},
-                    newScreen = {navController.navigate(Screen.FilteredNotifs.route)}
+                    newScreen = {navController.navigate(Screen.FilteredNotifs.route)},
+                    deleteSummary = {appViewModel.deleteSummaryWithNotificationFromId(it)}
                 )
             }
             composable(Screen.FilteredNotifs.route,
