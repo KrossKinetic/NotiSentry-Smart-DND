@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -143,10 +144,11 @@ fun FocusRules(updateBlacklistedApps: (String) -> Unit, updateListOfAppDetails: 
 @Composable
 fun AppCard(appName: String, image: Drawable, anExecutableFunction: () -> Unit, checked: Boolean, modifier: Modifier = Modifier){
     Card (modifier = modifier
-        .padding(10.dp)
+        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         .fillMaxWidth()
         .height(70.dp),
-        shape = RoundedCornerShape(8.dp)) {
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
 
         Row (modifier = Modifier.fillMaxSize()) {
             AsyncImage(
@@ -393,7 +395,8 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
 fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier, allNotifFunc: () -> Unit, newScreen: () -> Unit, deleteSummary: () -> Unit){
     Card (modifier = modifier
         .fillMaxWidth()
-        .padding(top = 15.dp),
+        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         shape = RoundedCornerShape(8.dp)) {
         Row (modifier = Modifier
             .fillMaxWidth()
@@ -444,14 +447,14 @@ fun FilteredNotifsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp)
                 .weight(1f) // Let the list take available space
         ) {
             items(notifs) { notif ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -466,7 +469,6 @@ fun FilteredNotifsScreen(
                                 modifier = Modifier.size(32.dp),
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            // Use the pre-fetched appName from the notif object
                             Text(
                                 text = "${notif.appName} • ${timeConverter(notif.timestamp)}",
                                 modifier = Modifier.weight(1f)
@@ -575,6 +577,8 @@ fun StartScreen(
 
         SetAutoDelete(curValue = autoDelete, updateAutoDelete = {updateAutoDelete(it)})
 
+        DonationsCard()
+
         Spacer(modifier = Modifier.weight(1f))
 
         NotificationCounter(count = counter)
@@ -592,11 +596,11 @@ fun StartScreen(
 
 @Composable
 fun NotificationCounter(modifier: Modifier = Modifier, count: Int){
-
     Card(modifier = modifier
-        .padding(10.dp)
+        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Row (modifier = Modifier.padding(10.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
             Text(
@@ -607,7 +611,7 @@ fun NotificationCounter(modifier: Modifier = Modifier, count: Int){
             Text(
                 text = count.toString(),
                 fontWeight = FontWeight.Bold,
-                fontSize = 60.sp,
+                fontSize = 40.sp,
                 modifier = Modifier.weight(0.2f)
             )
         }
@@ -617,10 +621,11 @@ fun NotificationCounter(modifier: Modifier = Modifier, count: Int){
 @Composable
 fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategorization: () -> Unit, useSmartBoolean: Boolean, navScreen: () -> Unit){
     Card (modifier = modifier
-        .padding(10.dp)
+        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         .fillMaxWidth()
         .height(70.dp),
-        shape = RoundedCornerShape(8.dp)) {
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
 
         Row (modifier = Modifier.fillMaxSize()) {
 
@@ -674,9 +679,10 @@ fun SetAutoDelete(modifier: Modifier = Modifier, updateAutoDelete: (Int) -> Unit
     val haptics = LocalHapticFeedback.current
 
     Card (modifier = modifier
-        .padding(10.dp)
+        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp)) {
+        shape = RoundedCornerShape(8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
 
         Row (modifier = Modifier
             .fillMaxWidth()
@@ -716,7 +722,6 @@ fun SetAutoDelete(modifier: Modifier = Modifier, updateAutoDelete: (Int) -> Unit
     }
 }
 
-// VerticalSlider
 @Composable
 fun VerticalSlider(
     value: Float,
@@ -760,6 +765,42 @@ fun VerticalSlider(
     )
 }
 
+@Composable
+fun DonationsCard() {
+    Card(
+        modifier = Modifier
+            .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Buy me a cup of coffee ☕",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                val donationAmounts = listOf(1, 5, 10)
+
+                donationAmounts.forEach { amount ->
+                    Button(onClick = { /* TODO: Handle donation logic for $amount */ }) {
+                        Text(text = "$${amount}")
+                    }
+                }
+            }
+        }
+    }
+}
 
 /*
 *

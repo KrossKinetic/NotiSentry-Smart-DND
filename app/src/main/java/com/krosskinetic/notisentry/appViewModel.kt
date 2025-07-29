@@ -65,6 +65,9 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     val autoDeleteValue: Int = 0,
     val notificationCaptured: Int = 0
 )
+
+const val CHANNEL_ID = "persistent_notification"
+const val NOTIFICATION_ID = 156
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val repository: NotificationRepository,
@@ -219,7 +222,10 @@ class AppViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 val appDetailsList = mutableListOf<AppDetails>()
                 val allInstalledApps =
-                    context.packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                    context.packageManager.getInstalledApplications(PackageManager.GET_META_DATA).filter {
+                        appInfo ->
+                        context.packageManager.getLaunchIntentForPackage(appInfo.packageName) != null
+                    }
 
                 for (app in allInstalledApps) {
                     try {
@@ -471,8 +477,7 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    val CHANNEL_ID = "persistent_notification"
-    val NOTIFICATION_ID = 156
+
 
     fun postPersistentNotification(
         context: Context,
@@ -513,7 +518,7 @@ class AppViewModel @Inject constructor(
         with(NotificationManagerCompat.from(context)) {
             try {
                 notify(NOTIFICATION_ID, builder.build())
-            } catch (e: SecurityException) {
+            } catch (_: SecurityException) {
                 Toast.makeText(
                     context,
                     "Notification permission denied. Please grant notification permission in app settings.",
