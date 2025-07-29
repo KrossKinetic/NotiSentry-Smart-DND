@@ -2,7 +2,6 @@ package com.krosskinetic.notisentry
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -26,7 +25,6 @@ import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.AppBlacklist
 import com.krosskinetic.notisentry.data.NotificationRepository
 import com.krosskinetic.notisentry.data.SettingsRepository
-import dagger.hilt.android.internal.Contexts.getApplication
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
