@@ -29,10 +29,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     private val AUTO_DELETE_KEY = intPreferencesKey("auto_delete_key")
 
+    private val NOTIFICATION_CAPTURED_KEY = intPreferencesKey("notification_capture_key")
+
     val startAutDeleteKeyFlow: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[AUTO_DELETE_KEY] ?: 3
         }
+
+    val notificationCapturedKeyFlow: Flow<Int> = context.dataStore.data
+        .map { preferences ->
+            preferences[NOTIFICATION_CAPTURED_KEY] ?: 0
+        }
+
     val startUseSmartCategorizationFlow: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[USE_SMART_CATEGORIZATION_KEY] ?: false
@@ -101,6 +109,19 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveSmartCategorizationStringTime(string: String) {
         context.dataStore.edit { preferences ->
             preferences[SMART_CATEGORIZATION_STRING_KEY] = string
+        }
+    }
+
+    suspend fun incrementNotification(){
+        context.dataStore.edit { preferences ->
+            val currentCount = preferences[NOTIFICATION_CAPTURED_KEY] ?: 0
+            preferences[NOTIFICATION_CAPTURED_KEY] = currentCount + 1
+        }
+    }
+
+    suspend fun resetNotification(){
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_CAPTURED_KEY] = 0
         }
     }
 }

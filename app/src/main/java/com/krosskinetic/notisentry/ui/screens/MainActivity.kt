@@ -227,13 +227,14 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     animationSpec = tween(durationMillis = 400)
                 )}) {
                 StartScreen(
-                    startStopFnc = { appViewModel.startStopFunc() },
+                    startStopFnc = { appViewModel.startStopFunc(context)},
                     start = uiState.startService,
                     useSmartCategorization = { appViewModel.updateSmartCategorization() },
                     useSmartBoolean = uiState.useSmartCategorization,
                     goToSmartScreenCategorization = {navController.navigate(Screen.SmartCategorizationScreen.route)},
                     updateAutoDelete = {appViewModel.updateAutoDeleteKey(it)},
-                    autoDelete = uiState.autoDeleteValue.toFloat()
+                    autoDelete = uiState.autoDeleteValue.toFloat(),
+                    counter = uiState.notificationCaptured
                 )
             }
             composable(Screen.Summaries.route,

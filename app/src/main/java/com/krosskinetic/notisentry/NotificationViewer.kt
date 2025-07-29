@@ -80,6 +80,7 @@ class NotiSentryService : NotificationListenerService() {
                         postNotification(this@NotiSentryService, notification)
                         Log.d(tag, "Allowed Notification using Gemini-2.5-Flash from: $packageName")
                     } else {
+                        settingsRepository.incrementNotification()
                         repository.addBlockedNotification(notification)
                         Log.d(tag, "Blocked and saved notification from: $packageName")
                     }
@@ -244,3 +245,4 @@ fun extractNotificationData(sbn: StatusBarNotification, context: Context): AppNo
         conversationTitle = extras.getString(Notification.EXTRA_CONVERSATION_TITLE) ?: ""
     )
 }
+

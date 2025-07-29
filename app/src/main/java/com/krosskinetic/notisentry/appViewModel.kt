@@ -2,11 +2,18 @@ package com.krosskinetic.notisentry
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.util.Log
+import android.widget.Toast
+import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,6 +26,7 @@ import com.krosskinetic.notisentry.data.AppNotifications
 import com.krosskinetic.notisentry.data.AppBlacklist
 import com.krosskinetic.notisentry.data.NotificationRepository
 import com.krosskinetic.notisentry.data.SettingsRepository
+import dagger.hilt.android.internal.Contexts.getApplication
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,7 +64,8 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     val startServiceTime: Long = 0,
     val endServiceTime: Long = 0,
     val smartCategorizationString: String = "",
-    val autoDeleteValue: Int = 0
+    val autoDeleteValue: Int = 0,
+    val notificationCaptured: Int = 0
 )
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -67,9 +76,18 @@ class AppViewModel @Inject constructor(
     // be read or written to
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow() // exposes it as a read-only flow
 
-
     init {
         _uiState.value = AppUiState()
+
+        viewModelScope.launch {
+            settingsRepository.notificationCapturedKeyFlow.collect { newNotificationCaptured ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        notificationCaptured = newNotificationCaptured
+                    )
+                }
+            }
+        }
 
         viewModelScope.launch {
             settingsRepository.startAutDeleteKeyFlow.collect { newAutoDeleteKey->
@@ -281,17 +299,20 @@ class AppViewModel @Inject constructor(
     }
 
 
-    fun startStopFunc() {
+    fun startStopFunc(context: Context) {
         viewModelScope.launch {
             if (uiState.value.startService){
                 Log.d("NotiSentryAI", "Stopping service")
                 settingsRepository.saveIsStarted(isStarted = false)
                 settingsRepository.saveEndTime(endTime = System.currentTimeMillis())
                 summarizeNotificationsWithGemma()
+                resetNotificationCount()
+                dismissPersistentNotification(context = context)
             } else {
                 Log.d("NotiSentryAI", "Started service")
                 settingsRepository.saveIsStarted(isStarted = true)
                 settingsRepository.saveStartTime(startTime = System.currentTimeMillis())
+                postPersistentNotification(context = context)
             }
         }
     }
@@ -443,6 +464,77 @@ class AppViewModel @Inject constructor(
     fun deleteSummaryWithNotificationFromId(summaryId: Int){
         viewModelScope.launch {
             repository.deleteSummaryWithNotification(summaryId)
+        }
+    }
+
+    fun resetNotificationCount(){
+        viewModelScope.launch {
+            settingsRepository.resetNotification()
+        }
+    }
+
+    val CHANNEL_ID = "persistent_notification"
+    val NOTIFICATION_ID = 156
+
+    fun postPersistentNotification(
+        context: Context,
+        title: String = "NotiSentry Running.",
+        content: String = "Notifications are being filtered. Enjoy a distraction free phone usage."
+    ) {
+        val name = "Persistent Notifications"
+        val descriptionText = "Notifications for ongoing background tasks"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            description = descriptionText
+            setShowBadge(false)
+            enableVibration(false)
+            setSound(
+                defaultSoundUri,
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+        }
+
+        val notificationManager: NotificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setLocalOnly(true)
+        with(NotificationManagerCompat.from(context)) {
+            try {
+                notify(NOTIFICATION_ID, builder.build())
+            } catch (e: SecurityException) {
+                Toast.makeText(
+                    context,
+                    "Notification permission denied. Please grant notification permission in app settings.",
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Failed to post notification: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun dismissPersistentNotification(context: Context) {
+        with(NotificationManagerCompat.from(context)) {
+            cancel(NOTIFICATION_ID)
         }
     }
 }

@@ -534,7 +534,8 @@ fun StartScreen(
     useSmartBoolean: Boolean,
     goToSmartScreenCategorization: () -> Unit,
     updateAutoDelete: (Int) -> Unit,
-    autoDelete: Float
+    autoDelete: Float,
+    counter: Int
 ){
 
     val scrollState = rememberScrollState()
@@ -576,14 +577,40 @@ fun StartScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
+        NotificationCounter(count = counter)
+
         Button(onClick = {
             startStopFnc()
         },
-            modifier = Modifier.padding(60.dp)
+            modifier = Modifier.padding(start=40.dp, end=40.dp, bottom = 40.dp, top=10.dp)
         ) {
             Text(text = if (!start) "Start NotiSentry" else "Stop NotiSentry")
         }
 
+    }
+}
+
+@Composable
+fun NotificationCounter(modifier: Modifier = Modifier, count: Int){
+
+    Card(modifier = modifier
+        .padding(10.dp)
+        .fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row (modifier = Modifier.padding(10.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Text(
+                text = "Notifications Blocked this Session : ",
+                modifier = Modifier.weight(0.8f)
+            )
+
+            Text(
+                text = count.toString(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 60.sp,
+                modifier = Modifier.weight(0.2f)
+            )
+        }
     }
 }
 
