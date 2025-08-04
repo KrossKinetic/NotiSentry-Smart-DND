@@ -1,0 +1,51 @@
+## Privacy Policy for NotiSentry
+
+**Last updated:** July 30, 2025
+
+This Privacy Policy describes how NotiSentry ("we," "us," or "our") collects, uses, and shares information when you use our mobile application (the "Service").
+
+### Information We Collect
+
+When you use NotiSentry, we may collect the following types of information:
+
+* **Notification Data:** We access and process the content of your notifications to provide the core functionality of our app. This includes the notification's title, text, timestamp, and the application it came from.
+* **Installed Applications:** We collect a list of your installed applications to allow you to select which apps you want to block or receive notifications from.
+* **User-Provided "Intent":** For our "Smart Categorization" feature, we use the text-based instructions you provide to determine which notifications to allow.
+* **Advertising Identifiers:** We use Google AdMob, which may collect device identifiers for the purpose of showing personalized ads.
+
+### How We Use Your Information
+
+We use the information we collect for the following purposes:
+
+* **To Provide and Improve the Service:** We use your notification data to filter, block, and summarize your notifications as you've configured in the app.
+* **To Personalize Your Experience:** The "Smart Categorization" feature uses your intent string to tailor notification filtering to your preferences.
+* **For AI-Powered Features:** We use third-party services from Google (Firebase GenAI with Gemini-2.5-Flash) to provide intelligent summarization of your blocked notifications and to power the smart categorization feature.
+* **To Display Advertisements:** We use Google AdMob to display ads within the app.
+
+### Data Sharing and Disclosure
+
+We do not sell your personal information. We may share your information with third parties in the following circumstances:
+
+* **With AI Service Providers:** We share your notification content and/or your intent string with Google's AI services to provide the summarization and smart categorization features.
+* **With Advertising Partners:** We share device identifiers with Google AdMob to display advertisements.
+* **For Legal Reasons:** We may disclose your information if required by law or in response to valid requests by public authorities.
+
+### Data Retention
+
+We store your blocked notifications and summaries on your device. You have control over this data and can delete it at any time. The app also includes an auto-delete feature that, by default, removes notifications and summaries that are older than three days. You can configure this setting.
+
+### Security
+
+We are committed to protecting your data. All notification processing happens securely through Google's end-to-end encrypted Firebase API, and your data is stored locally on your device.
+
+### Children's Privacy
+
+Our Service is not intended for use by children under the age of 13. We do not knowingly collect personally identifiable information from children under 13. If we become aware that we have collected Personal Information from a child under 13, we will take steps to delete that information.
+
+### Changes to This Privacy Policy
+
+We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes.
+
+### Contact Us
+
+If you have any questions about this Privacy Policy, please contact us at: anshumaanvsingh@gmail.com
