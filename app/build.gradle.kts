@@ -20,8 +20,8 @@ android {
         applicationId = "com.krosskinetic.notisentry"
         minSdk = 34
         targetSdk = 36
-        versionCode = 2
-        versionName = "Alpha-1.1"
+        versionCode = 3
+        versionName = "Alpha-1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
