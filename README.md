@@ -4,6 +4,8 @@ NotiSentry is a WIP modern Android application designed to help users reclaim th
 
 I originally planned to use Gemini Nano for its on-device capabilities, but due to the lack of a Pixel 9 series device for testing and to leverage the advantages of cloud infrastructure, I've opted for a more open and scalable solution with **Firebase** and **Gemini-Flash-2.5**. This allows for broader device support and enhanced capabilities.
 
+PS: If you wish to try the app out, send me an email on : krosskinetic@gmail.com
+
 ---
 ## ✨ Features
 
