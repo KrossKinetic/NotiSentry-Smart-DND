@@ -9,10 +9,10 @@ PS: If you wish to try the app out, send me an email on : krosskinetic@gmail.com
 ---
 ## Images
 
-![unnamed (1).webp](unnamed (1).webp)
-![unnamed (2).webp](unnamed (2).webp)
-![unnamed (3).webp](unnamed (3).webp)
-![unnamed (4).webp](unnamed (4).webp)
+![unnamed (1).webp](unnamed(1).webp)
+![unnamed (2).webp](unnamed(2).webp)
+![unnamed (3).webp](unnamed(3).webp)
+![unnamed (4).webp](unnamed(4).webp)
 ![unnamed.webp](unnamed.webp)
 
 ---
