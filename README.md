@@ -10,11 +10,11 @@ PS: If you wish to try the app out, send me an email on : krosskinetic@gmail.com
 ## Images
 
 <p align="center">
-    <img src="unnamed.webp" width="180">
-    <img src="unnamed(1).webp" width="180">
-    <img src="unnamed(2).webp" width="180">
-    <img src="unnamed(3).webp" width="180">
-    <img src="unnamed(4).webp" width="180">
+    <img src="unnamed.webp" width="200">
+    <img src="unnamed(1).webp" width="200">
+    <img src="unnamed(2).webp" width="200">
+    <img src="unnamed(3).webp" width="200">
+    <img src="unnamed(4).webp" width="200">
   </p>
 ---
 ## ✨ Features
