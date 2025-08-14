@@ -7,6 +7,9 @@ I originally planned to use Gemini Nano for its on-device capabilities, but due 
 PS: If you wish to try the app out, send me an email on : krosskinetic@gmail.com
 
 ---
+## Images
+
+---
 ## ✨ Features
 
 * **Focus Mode**: A strict whitelisting system where users can select specific apps they want to receive notifications from. All other notifications are silently blocked and saved.
