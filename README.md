@@ -9,12 +9,18 @@ PS: If you wish to try the app out, send me an email on : krosskinetic@gmail.com
 ---
 ## Images
 
-![unnamed (1).webp](unnamed(1).webp)
-![unnamed (2).webp](unnamed(2).webp)
-![unnamed (3).webp](unnamed(3).webp)
-![unnamed (4).webp](unnamed(4).webp)
-![unnamed.webp](unnamed.webp)
-
+<details>
+  <summary>► Click to view screenshots</summary>
+  <br>
+  
+  <p align="center">
+    <img src="unnamed.webp" width="160">
+    <img src="unnamed(1).webp" width="160">
+    <img src="unnamed(2).webp" width="160">
+    <img src="unnamed(3).webp" width="160">
+    <img src="unnamed(4).webp" width="160">
+  </p>
+</details>
 ---
 ## ✨ Features
 
