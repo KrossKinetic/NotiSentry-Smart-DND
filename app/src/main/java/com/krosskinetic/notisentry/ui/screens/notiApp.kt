@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AssistChip
@@ -43,9 +41,7 @@ import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,7 +53,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,14 +62,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
 import com.krosskinetic.notisentry.data.AppDetails
 import com.krosskinetic.notisentry.data.AppNotificationSummary
 import com.krosskinetic.notisentry.data.AppNotifications
-import compose_util.BannerAd
-import com.krosskinetic.notisentry.BuildConfig
 import com.krosskinetic.notisentry.data.AppBlacklist
 import kotlin.math.roundToInt
 
@@ -209,7 +199,7 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
         LazyColumn(
             modifier = modifier
                 .fillMaxSize()
-                .padding(10.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         ) {
             // --- TODAY'S SECTION ---
             if (summaryToday.isNotEmpty()) {
@@ -395,21 +385,27 @@ fun SummariesScreen(anExecutableFunction: () -> Unit,
 fun AppCardSummary(notiText: String, timestampStart: String, timestampEnd: String, modifier: Modifier = Modifier, allNotifFunc: () -> Unit, newScreen: () -> Unit, deleteSummary: () -> Unit){
     Card (modifier = modifier
         .fillMaxWidth()
-        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp),
+        .padding(top = 10.dp, bottom = 10.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
         shape = RoundedCornerShape(8.dp)) {
         Row (modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceAround) {
+            .padding(top = 10.dp, start = 10.dp), horizontalArrangement = Arrangement.Start) {
             AssistChip(
                 onClick = {},
-                label = {Text(text = "From: $timestampStart")},
-            )
-            AssistChip(
-                onClick = {},
-                label = {Text(text = "End: $timestampEnd")},
+                label = {Text(text = "NotiSentry Started at : $timestampStart")},
             )
         }
+
+        Row (modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp, start = 10.dp), horizontalArrangement = Arrangement.Start) {
+            AssistChip(
+                onClick = {},
+                label = {Text(text = "NotiSentry Stopped at : $timestampEnd")},
+            )
+        }
+
         Text(
             text = notiText,
             modifier = Modifier
@@ -458,7 +454,6 @@ fun FilteredNotifsScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        // --- Header: Icon, App Name, and Time ---
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
@@ -532,12 +527,13 @@ fun StartScreen(
     startStopFnc: () -> Unit,
     start: Boolean,
     modifier: Modifier = Modifier,
-    useSmartCategorization: () -> Unit,
-    useSmartBoolean: Boolean,
-    goToSmartScreenCategorization: () -> Unit,
+    text: String,
+    updateText: (String) -> Unit,
     updateAutoDelete: (Int) -> Unit,
     autoDelete: Float,
-    counter: Int
+    counter: Int,
+    notifFilters: () -> Unit,
+    updateNotifFilters: () -> Unit
 ){
 
     val scrollState = rememberScrollState()
@@ -546,34 +542,7 @@ fun StartScreen(
         .fillMaxSize()
         .verticalScroll(scrollState), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top) {
 
-        val context = LocalContext.current
-
-        val adUnitIdOther = if (BuildConfig.DEBUG) {
-            BuildConfig.ADMOB_BANNER_UNIT_ID_DEBUG
-        } else {
-            BuildConfig.ADMOB_BANNER_UNIT_ID_RELEASE
-        }
-
-        // Init the adview
-        val adView = remember {
-            AdView(context).apply {
-                adUnitId = adUnitIdOther
-                setAdSize(AdSize.BANNER)
-                loadAd(AdRequest.Builder().build())
-            }
-        }
-
-        // Kill when the ad goes out of picture to save battery
-        DisposableEffect(Unit) {
-            onDispose {
-                adView.destroy() // Crucial for releasing resources and preventing memory leaks
-            }
-        }
-
-
-        BannerAd(adView= adView, modifier = Modifier.padding(10.dp))
-
-        UseSmartNotificationFilter(modifier, useSmartCategorization, useSmartBoolean, navScreen = goToSmartScreenCategorization)
+        UseSmartNotificationFilter(modifier,text,updateText)
 
         SetAutoDelete(curValue = autoDelete, updateAutoDelete = {updateAutoDelete(it)})
 
@@ -581,7 +550,7 @@ fun StartScreen(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        NotificationCounter(count = counter)
+        NotificationCounter(count = counter, notifFilters = notifFilters, update = updateNotifFilters)
 
         Button(onClick = {
             startStopFnc()
@@ -595,48 +564,63 @@ fun StartScreen(
 }
 
 @Composable
-fun NotificationCounter(modifier: Modifier = Modifier, count: Int){
+fun NotificationCounter(modifier: Modifier = Modifier, count: Int, notifFilters: () -> Unit, update: () -> Unit){
     Card(modifier = modifier
         .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
         .fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
-        Row (modifier = Modifier.padding(10.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Text(
-                text = "Notifications Blocked this Session : ",
-                modifier = Modifier.weight(0.8f)
-            )
+        if (count != 0) {
+            Row (modifier = Modifier
+                .padding(10.dp)
+                .fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Text(
+                    text = "Notifications Blocked this Session : ",
+                    modifier = Modifier.weight(0.8f)
+                )
 
-            Text(
-                text = count.toString(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 40.sp,
-                modifier = Modifier.weight(0.2f)
-            )
+                Text(
+                    text = count.toString(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
+                    modifier = Modifier.weight(0.2f),
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .padding(bottom = 10.dp, start = 10.dp, end = 10.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(onClick = {
+                    update()
+                    notifFilters()
+                }) {
+                    Text(text = "See Blocked Notifications")
+                }
+            }
         }
     }
 }
 
 @Composable
-fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategorization: () -> Unit, useSmartBoolean: Boolean, navScreen: () -> Unit){
-    Card (modifier = modifier
-        .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
-        .fillMaxWidth()
-        .height(70.dp),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
+fun UseSmartNotificationFilter(modifier: Modifier = Modifier, text: String, updateText: (String) -> Unit){
 
-        Row (modifier = Modifier.fillMaxSize()) {
+    var showIntentTab by remember { mutableStateOf(false) }
+    Column (modifier = Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)) {
+
+        Card (modifier = modifier.fillMaxSize(),
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)) {
 
             Row (modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .clickable(onClick = {
-                    navScreen()
-                })) {
+                .fillMaxHeight(),
+                horizontalArrangement = Arrangement.Center) {
                 Text(
-                    text = "Use Smart Notification Categorization",
+                    text = "Use Smart Intent Filtering",
                     modifier = Modifier
                         .padding(start = 10.dp)
                         .align(Alignment.CenterVertically)
@@ -644,29 +628,36 @@ fun UseSmartNotificationFilter(modifier: Modifier = Modifier, updateSmartCategor
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = "Expand",
-                    modifier = Modifier
-                        .padding(start = 10.dp)
-                        .align(Alignment.CenterVertically)
-                        .size(18.dp)
-                )
+                IconButton(onClick = {
+                    showIntentTab = !showIntentTab
+                }) {
+                    Icon(
+                        imageVector = if (showIntentTab) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = "Expand",
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                    )
+                }
+
             }
 
-            VerticalDivider(modifier = Modifier
-                .padding(all = 10.dp)
-                .padding(start = 0.dp))
-
-            Switch(
-                checked = useSmartBoolean,
-                onCheckedChange = {
-                    updateSmartCategorization()
-                },
-                modifier = Modifier
-                    .padding(end = 10.dp)
-                    .align(Alignment.CenterVertically)
-            )
+            Row {
+                AnimatedVisibility(
+                    visible = showIntentTab,
+                    enter = expandVertically(
+                        expandFrom = Alignment.Top,
+                        animationSpec = tween(durationMillis = 300)
+                    ),
+                    exit = shrinkVertically(
+                        shrinkTowards = Alignment.Top,
+                        animationSpec = tween(durationMillis = 300)
+                    )
+                ) {
+                    Row {
+                        SmartCategorizationScreen(text = text, updateText = {updateText(it)})
+                    }
+                }
+            }
         }
     }
 }
@@ -774,28 +765,24 @@ fun DonationsCard() {
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = "Buy me a cup of coffee ☕",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+        Row (modifier = Modifier.padding(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(0.55f),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
             ) {
-                val donationAmounts = listOf(1, 5, 10)
-
-                donationAmounts.forEach { amount ->
-                    Button(onClick = { /* TODO: Handle donation logic for $amount */ }) {
-                        Text(text = "$${amount}")
-                    }
+                Text(
+                    text = "Subscribe to NotiSentry Premium!"
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.45f),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+            ) {
+                Button(onClick = { /* TODO: Handle sub logic for $amount */ }) {
+                    Text(text = "Know More")
                 }
             }
         }
@@ -809,28 +796,23 @@ fun DonationsCard() {
 *  */
 
 @Composable
-fun SmartCategorizationScreen(modifier: Modifier = Modifier, goBack: () -> Unit, text: String, updateText: (String) -> Unit){
+fun SmartCategorizationScreen(modifier: Modifier = Modifier, text: String, updateText: (String) -> Unit){
     Column (horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Top, modifier = Modifier.fillMaxSize() ) {
 
         var textLocal by remember { mutableStateOf(text) }
 
         OutlinedTextField(
             value = textLocal,
-            onValueChange = { textLocal = it },
+            onValueChange = {
+                textLocal = it
+                updateText(textLocal)
+                            },
             label = { Text("Enter Intent for filtering")},
-            placeholder = { Text("eg. 'Don't let any apps through except Clash of Clans', 'Do not let Facebook through, rest are fine.' ") },
+            placeholder = { Text("eg. 'Don't let any apps through except Clash of Clans', 'Do not let Facebook through unless it is urgent, rest are fine.' ") },
             modifier = modifier
-                .padding(10.dp)
+                .padding(16.dp)
                 .fillMaxWidth()
         )
-
-        Spacer(modifier = modifier.weight(0.8f))
-
-        Button(onClick = {
-            updateText(textLocal)
-            goBack()}, modifier = modifier.padding(10.dp)) {
-            Text(text = "Done")
-        }
     }
 }
 

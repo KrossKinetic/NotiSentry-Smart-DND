@@ -5,7 +5,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NotificationRepository @Inject constructor(private val notificationDao: NotificationDao, private val blacklistDao: AppWhitelistDao, private val summaryDao: AppSummariesDao) {
+class NotificationRepository @Inject constructor(private val notificationDao: NotificationDao, private val blacklistDao: AppBlacklistDao, private val summaryDao: AppSummariesDao, private val processedMessageDao: ProcessedMessageDao) {
     // List of blocked notifications that acts as a bridge between service and view model using hilt
 
     val blockedNotificationsFlow: Flow<List<AppNotifications>> = notificationDao.getAllNotifications()
@@ -48,4 +48,15 @@ class NotificationRepository @Inject constructor(private val notificationDao: No
         summaryDao.removeFromSavedSummaries(summaryId)
     }
 
+    suspend fun addProcessedMessage(messageId: String) {
+        processedMessageDao.insert(ProcessedMessage(messageId))
+    }
+
+    suspend fun isMessageProcessed(messageId: String): Boolean {
+        return processedMessageDao.messageExists(messageId)
+    }
+
+    suspend fun clearProcessedMessages() {
+        processedMessageDao.clearAll()
+    }
 }

@@ -7,7 +7,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface AppWhitelistDao {
+interface AppBlacklistDao {
 
     @Query("SELECT COUNT(*) FROM blacklist_apps WHERE packageName = :appPackage")
     suspend fun isBlacklisted(appPackage: String): Int

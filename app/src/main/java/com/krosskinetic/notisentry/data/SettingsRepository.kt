@@ -22,9 +22,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val START_SERVICE_TIME_KEY = longPreferencesKey("start_service_time")
     private val END_SERVICE_TIME_KEY = longPreferencesKey("end_service_time")
     private val INTRO_DONE_KEY = booleanPreferencesKey("intro_done")
-
-    private val USE_SMART_CATEGORIZATION_KEY = booleanPreferencesKey("smart_categorization")
-
     private val SMART_CATEGORIZATION_STRING_KEY = stringPreferencesKey("smart_categorization_string")
 
     private val AUTO_DELETE_KEY = intPreferencesKey("auto_delete_key")
@@ -39,11 +36,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     val notificationCapturedKeyFlow: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[NOTIFICATION_CAPTURED_KEY] ?: 0
-        }
-
-    val startUseSmartCategorizationFlow: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[USE_SMART_CATEGORIZATION_KEY] ?: false
         }
 
     val startSmartCategorizationStringFlow: Flow<String> = context.dataStore.data
@@ -97,12 +89,6 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun saveIntroDone(isDone: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[INTRO_DONE_KEY] = isDone
-        }
-    }
-
-    suspend fun saveSmartCategorization(isSmart: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[USE_SMART_CATEGORIZATION_KEY] = isSmart
         }
     }
 

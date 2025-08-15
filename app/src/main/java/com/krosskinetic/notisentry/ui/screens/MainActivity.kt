@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -78,18 +79,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-sealed class Screen(val route: String, val icon: ImageVector) {
-    object Welcome : Screen("Welcome", Icons.AutoMirrored.Filled.List)
-    object NotiPerm : Screen("Notification Permission", Icons.AutoMirrored.Filled.List)
-    object AllDone : Screen("All Done", Icons.AutoMirrored.Filled.List)
-    object FocusRules : Screen("Focus Rules", Icons.AutoMirrored.Filled.List)
-    object Play : Screen("Start", Icons.Default.PlayCircle)
-    object Summaries : Screen("Summaries", Icons.Default.Info)
+sealed class Screen(val route: String, val icon: ImageVector, val showNavBars: Boolean = false, val showTopBar: Boolean = true) {
+    object Welcome : Screen("Welcome", Icons.AutoMirrored.Filled.List, showTopBar = false)
+    object NotiPerm : Screen("Notification Permission", Icons.AutoMirrored.Filled.List, showTopBar = false)
+    object NotiPerm2 : Screen("Notification Permission 2", Icons.AutoMirrored.Filled.List, showTopBar = false)
+    object AllDone : Screen("All Done", Icons.AutoMirrored.Filled.List, showTopBar = false)
+    object FocusRules : Screen("Focus Rules", Icons.AutoMirrored.Filled.List, showNavBars = true)
+    object Play : Screen("Start", Icons.Default.PlayCircle, showNavBars = true)
+    object Summaries : Screen("Summaries", Icons.Default.Info, showNavBars = true)
     object FilteredNotifs : Screen("Filtered Notifications", Icons.Default.Info)
 
     object Loading : Screen("Loading", Icons.Default.Info)
 
-    object SmartCategorizationScreen : Screen("Loading", Icons.Default.Info)
+    object OnBoarding : Screen("OnBoarding", Icons.Default.Info)
+
+    object FilteredNotifs2 : Screen("FilteredNotifs2", Icons.Default.Info)
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,16 +102,38 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
     val uiState by appViewModel.uiState.collectAsState()
     val context = LocalContext.current
     val navController = rememberNavController()
+
     val items = listOf(
         Screen.FocusRules,
         Screen.Play,
+        Screen.Summaries
+    )
+
+    val anotherItems = listOf(
+        Screen.FocusRules,
+        Screen.Play,
         Screen.Summaries,
+        Screen.NotiPerm,
+        Screen.NotiPerm2,
+        Screen.AllDone,
+        Screen.Welcome,
+        Screen.Loading,
+        Screen.FilteredNotifs,
+        Screen.OnBoarding,
+        Screen.FilteredNotifs2
     )
 
     Scaffold(
         topBar = {
-            if (uiState.introDone == true) {
-                // Use the TopAppBar composable here
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+            val shouldShowBars = anotherItems.find { it.route == currentRoute }?.showTopBar == true
+
+            AnimatedVisibility(
+                visible = shouldShowBars,
+                enter = fadeIn(animationSpec = tween(durationMillis = 100)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 100))
+            ) {
                 TopAppBar(
                     title = {
                         Text(text = "NotiSentry")
@@ -120,7 +146,15 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (uiState.introDone == true){
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+            val shouldShowBars = anotherItems.find { it.route == currentRoute }?.showNavBars == true
+
+            AnimatedVisibility(
+                visible = shouldShowBars,
+                enter = fadeIn(animationSpec = tween(durationMillis = 100)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 100))
+            ) {
                 NavigationBar {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentRoute = navBackStackEntry?.destination?.route
@@ -159,40 +193,68 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                 }
             }
             /**
-             * Below are the 3 one-time view intro screen
+             * Below are the 4 one-time view intro screen
              * */
             composable(Screen.Welcome.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 IntroScreenWelcome({ navController.navigate(Screen.NotiPerm.route) })
             }
+
             composable(Screen.NotiPerm.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 IntroScreenPermission(
                     {appViewModel.isNotificationAccessGranted(context)},
-                    { navController.navigate(Screen.AllDone.route) })
+                    { navController.navigate(Screen.NotiPerm2.route) },
+                    fn = { appViewModel.sendAndCancelTestNotification(context) })
             }
-            composable(Screen.AllDone.route,
+
+            composable(Screen.NotiPerm2.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
+                )}) {
+                IntroScreenPermission2(
+                    { navController.navigate(Screen.OnBoarding.route) })
+            }
+
+            composable(route=Screen.OnBoarding.route,
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 100)
+                    )
+                },
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 100)
+                )}) {
+                OnBoarding({ navController.navigate(Screen.AllDone.route) })
+            }
+
+            composable(Screen.AllDone.route,
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(durationMillis = 100)
+                    )
+                },
+                exitTransition = { fadeOut(
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 IntroScreenAllDone(
                     { navController.navigate(Screen.FocusRules.route) },
@@ -205,11 +267,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             composable(Screen.FocusRules.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 FocusRules(
                     blacklistedApps = uiState.blacklistedApps,
@@ -220,31 +282,32 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             composable(Screen.Play.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 StartScreen(
-                    startStopFnc = { appViewModel.startStopFunc(context)},
+                    startStopFnc = { appViewModel.startStopFunc(context) },
                     start = uiState.startService,
-                    useSmartCategorization = { appViewModel.updateSmartCategorization() },
-                    useSmartBoolean = uiState.useSmartCategorization,
-                    goToSmartScreenCategorization = {navController.navigate(Screen.SmartCategorizationScreen.route)},
-                    updateAutoDelete = {appViewModel.updateAutoDeleteKey(it)},
+                    text = uiState.smartCategorizationString,
+                    updateText = { appViewModel.updateSmartCategorizationString(it) },
+                    updateAutoDelete = { appViewModel.updateAutoDeleteKey(it) },
                     autoDelete = uiState.autoDeleteValue.toFloat(),
-                    counter = uiState.notificationCaptured
+                    counter = uiState.notificationCaptured,
+                    updateNotifFilters = {appViewModel.updateFilteredNotifsNoEnd(uiState.startServiceTime)},
+                    notifFilters =  { navController.navigate(Screen.FilteredNotifs2.route) }
                 )
             }
             composable(Screen.Summaries.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 SummariesScreen(
                     { appViewModel.updateSummaries() },
@@ -263,11 +326,11 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
             composable(Screen.FilteredNotifs.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
                 FilteredNotifsScreen(
                     notifs = uiState.filteredNotifs,
@@ -278,19 +341,22 @@ fun MainAppScreen(appViewModel: AppViewModel = viewModel()) {
                     getAppIcon = { appViewModel.getAppIconByPackageName(context, it) },
                 )
             }
-            composable(Screen.SmartCategorizationScreen.route,
+            composable(Screen.FilteredNotifs2.route,
                 enterTransition = {
                     fadeIn(
-                        animationSpec = tween(durationMillis = 400)
+                        animationSpec = tween(durationMillis = 100)
                     )
                 },
                 exitTransition = { fadeOut(
-                    animationSpec = tween(durationMillis = 400)
+                    animationSpec = tween(durationMillis = 100)
                 )}) {
-                SmartCategorizationScreen(
-                    goBack = { navController.navigate(Screen.Play.route) },
-                    text = uiState.smartCategorizationString,
-                    updateText = {appViewModel.updateSmartCategorizationString(it)}
+                FilteredNotifsScreen(
+                    notifs = uiState.filteredNotifs,
+                    timeConverter = {
+                        appViewModel.formatTimestampToTime(it)
+                    },
+                    newScreen = { navController.navigate(Screen.Play.route) },
+                    getAppIcon = { appViewModel.getAppIconByPackageName(context, it) },
                 )
             }
         }

@@ -8,10 +8,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import android.util.Log
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
@@ -58,15 +55,13 @@ data class AppUiState( // A Blueprint of everything UI needs to display at a cer
     // DataStore user preference
     val introDone: Boolean? = null,
     val startService: Boolean = false,
-    val useSmartCategorization: Boolean = false,
     val startServiceTime: Long = 0,
     val endServiceTime: Long = 0,
     val smartCategorizationString: String = "",
     val autoDeleteValue: Int = 0,
-    val notificationCaptured: Int = 0
+    val notificationCaptured: Int = 0,
 )
 
-const val CHANNEL_ID = "persistent_notification"
 const val NOTIFICATION_ID = 156
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -105,16 +100,6 @@ class AppViewModel @Inject constructor(
                 _uiState.update { currentState ->
                     currentState.copy(
                         smartCategorizationString = newString
-                    )
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            settingsRepository.startUseSmartCategorizationFlow.collect { newCategorization ->
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        useSmartCategorization = newCategorization
                     )
                 }
             }
@@ -305,15 +290,15 @@ class AppViewModel @Inject constructor(
 
     fun startStopFunc(context: Context) {
         viewModelScope.launch {
+            toggleDND(context)
             if (uiState.value.startService){
-                Log.d("NotiSentryAI", "Stopping service")
+                repository.clearProcessedMessages()
                 settingsRepository.saveIsStarted(isStarted = false)
                 settingsRepository.saveEndTime(endTime = System.currentTimeMillis())
                 summarizeNotificationsWithGemma()
                 resetNotificationCount()
                 dismissPersistentNotification(context = context)
             } else {
-                Log.d("NotiSentryAI", "Started service")
                 settingsRepository.saveIsStarted(isStarted = true)
                 settingsRepository.saveStartTime(startTime = System.currentTimeMillis())
                 postPersistentNotification(context = context)
@@ -322,56 +307,9 @@ class AppViewModel @Inject constructor(
     }
 
     fun isNotificationAccessGranted(context: Context): Boolean {
-        return NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+        return NotificationManagerCompat.getEnabledListenerPackages(context)
+            .contains(context.packageName)
     }
-
-    /** This is for Gemini Nano, not yet tested due to lack of Pixel 9 Pro
-    fun summarizeNotificationsWithNano(context: Context){
-        viewModelScope.launch {
-            val timeStart = uiState.value.startServiceTime
-            val timeEnd = uiState.value.endServiceTime
-            // Using joinToString for cleaner code.
-
-            val summaryText = _uiState.value.blockedNotifications
-                .filter { it.timestamp >= timeStart && it.timestamp<= timeEnd }
-                .joinToString(separator = "\n") {"App Package: " + it.packageName + ", Notification Text" +  it.text}
-
-            Log.d("NotiSentryAI", "Summary text: $summaryText")
-
-            if (summaryText.isBlank()) {
-                return@launch
-            }
-
-            withContext(Dispatchers.IO) {
-                try {
-                    val summarizerOptions = SummarizerOptions.builder(context)
-                        .setInputType(SummarizerOptions.InputType.ARTICLE)
-                        .setOutputType(SummarizerOptions.OutputType.ONE_BULLET)
-                        .setLanguage(SummarizerOptions.Language.ENGLISH)
-                        .build()
-
-                    val summarizer = Summarization.getClient(summarizerOptions)
-
-                    // 1. CHECK THE STATUS FIRST
-                    val featureStatus = summarizer.checkFeatureStatus().await()
-                    Log.d("NotiSentryAI", "Summarizer status: $featureStatus")
-
-                    withContext(Dispatchers.IO) {
-                        val summarizationRequest = SummarizationRequest.builder(summaryText).build()
-                        val result = summarizer.runInference(summarizationRequest).get().summary
-                        Log.d("NotiSentryAI", "Summarized: $result")
-
-                        repository.addToSavedSummary(result, timeStart, timeEnd)
-                        _uiState.update { it.copy(startServiceTime = 0, endServiceTime = 0) }
-                    }
-
-                } catch (e: Exception) {
-                    Log.e("NotiSentryAI", "An error occurred during summarization process. Trying Gemini Flash", e)
-                    summarizeNotifications(summaryText, timeStart, timeEnd)
-                }
-            }
-        }
-    }*/
 
     private fun summarizeNotificationsWithGemma() {
         viewModelScope.launch {
@@ -406,7 +344,7 @@ class AppViewModel @Inject constructor(
                     """
 
                     val model = Firebase.ai(backend = GenerativeBackend.googleAI())
-                        .generativeModel("gemini-2.5-flash")
+                        .generativeModel("gemini-2.5-flash-lite")
 
                     val summary = model.generateContent(prompt)
 
@@ -435,18 +373,24 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    fun updateFilteredNotifsNoEnd(startTime: Long){
+        viewModelScope.launch {
+            val notifs = repository.blockedNotificationsFlow.map { notif -> notif.filter {it.timestamp >= startTime}}.first()
+            _uiState.update {
+                    currentState ->
+                currentState.copy(
+                    filteredNotifs = notifs
+                )
+            }
+        }
+    }
+
     fun getAppIconByPackageName(context: Context, packageName: String): Drawable? {
         return try {
             context.packageManager.getApplicationIcon(packageName)
         } catch (e: PackageManager.NameNotFoundException) {
             e.printStackTrace()
             null
-        }
-    }
-
-    fun updateSmartCategorization(){
-        viewModelScope.launch {
-            settingsRepository.saveSmartCategorization(!uiState.value.useSmartCategorization)
         }
     }
 
@@ -484,60 +428,73 @@ class AppViewModel @Inject constructor(
         title: String = "NotiSentry Running.",
         content: String = "Notifications are being filtered. Enjoy a distraction free phone usage."
     ) {
-        val name = "Persistent Notifications"
-        val descriptionText = "Notifications for ongoing background tasks"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
-
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-
-        val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-            description = descriptionText
-            setShowBadge(false)
-            enableVibration(false)
-            setSound(
-                defaultSoundUri,
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-        }
-
-        val notificationManager: NotificationManager =
+        val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channelId = "general_notifications"
+
+        val channel = NotificationChannel(
+            channelId,
+            "General",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "General Notification"
+        }
         notificationManager.createNotificationChannel(channel)
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentTitle(title)
             .setContentText(content)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setLocalOnly(true)
-        with(NotificationManagerCompat.from(context)) {
-            try {
-                notify(NOTIFICATION_ID, builder.build())
-            } catch (_: SecurityException) {
-                Toast.makeText(
-                    context,
-                    "Notification permission denied. Please grant notification permission in app settings.",
-                    Toast.LENGTH_LONG
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Failed to post notification: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-                e.printStackTrace()
-            }
-        }
+
+        notificationManager.notify(NOTIFICATION_ID , notificationBuilder.build())
     }
 
     fun dismissPersistentNotification(context: Context) {
         with(NotificationManagerCompat.from(context)) {
             cancel(NOTIFICATION_ID)
         }
+    }
+
+    fun toggleDND(context: Context) {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!uiState.value.startService){
+            if (notificationManager.isNotificationPolicyAccessGranted) {
+                notificationManager.setInterruptionFilter(
+                    NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                )
+            }
+        } else {
+            notificationManager.setInterruptionFilter(
+                NotificationManager.INTERRUPTION_FILTER_ALL
+            )
+        }
+    }
+
+    fun sendAndCancelTestNotification(context: Context) {
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channelId = "general_notifications"
+
+        val channel = NotificationChannel(
+            channelId,
+            "General",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "General app notifications"
+        }
+        notificationManager.createNotificationChannel(channel)
+
+        val notificationBuilder = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
+        notificationManager.notify(0, notificationBuilder.build())
+        notificationManager.cancel(0)
     }
 }

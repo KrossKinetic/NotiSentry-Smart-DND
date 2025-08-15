@@ -18,10 +18,10 @@ android {
 
     defaultConfig {
         applicationId = "com.krosskinetic.notisentry"
-        minSdk = 34
+        minSdk = 35
         targetSdk = 36
-        versionCode = 3
-        versionName = "Alpha-1.2"
+        versionCode = 4
+        versionName = "Alpha-2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -99,4 +99,7 @@ dependencies {
 
     //Admob
     implementation(libs.play.services.ads)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
 }

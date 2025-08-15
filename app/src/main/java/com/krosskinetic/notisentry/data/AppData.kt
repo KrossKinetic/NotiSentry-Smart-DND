@@ -15,6 +15,11 @@ data class AppBlacklist(
     @PrimaryKey val packageName: String
 )
 
+@Entity(tableName = "processed_messages")
+data class ProcessedMessage(
+    @PrimaryKey val messageId: String
+)
+
 @Entity(tableName = "blocked_notifications")
 data class AppNotifications(
     @PrimaryKey(autoGenerate = true)

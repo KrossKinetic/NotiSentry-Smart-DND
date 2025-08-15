@@ -29,12 +29,17 @@ object DatabaseModule {
     }
 
     @Provides
-    fun provideAppWhitelistDao(appDatabase: AppDatabase): AppWhitelistDao {
-        return appDatabase.whitelistDao()
+    fun provideAppWhitelistDao(appDatabase: AppDatabase): AppBlacklistDao {
+        return appDatabase.blacklistDao()
     }
 
     @Provides
     fun provideSavedSummariesDao(appDatabase: AppDatabase): AppSummariesDao {
         return appDatabase.savedSummariesDao()
+    }
+
+    @Provides
+    fun provideProcessedMessageDao(appDatabase: AppDatabase): ProcessedMessageDao {
+        return appDatabase.processedMessageDao()
     }
 }

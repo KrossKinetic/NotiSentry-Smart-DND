@@ -35,8 +35,6 @@ class NotiSentryService : NotificationListenerService() {
 
     private lateinit var repository: NotificationRepository
     private lateinit var settingsRepository: SettingsRepository
-
-    private val tag = "NotiSentryService"
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -59,30 +57,30 @@ class NotiSentryService : NotificationListenerService() {
 
             serviceScope.launch {
                 if (repository.isAppBlacklisted(packageName) && settingsRepository.startServiceFlow.first()) {
-                    cancelNotification(sbn.key)
-
-                    var allow = false
 
                     val notification = extractNotificationData(sbn,this@NotiSentryService)
-                    val notificationFinalText = formatNotificationToString(notification)
-                    notification.parsedText = notificationFinalText
 
-                    Log.d("NotiSentryAI", "Notification: $notificationFinalText")
+                    val filteredNotification = filterNewMessages(sbn,notification,repository)
 
-                    if (settingsRepository.startUseSmartCategorizationFlow.first()){
-                        allow = allowNotification(
+                    if (filteredNotification == null){
+                        return@launch
+                    } else {
+                        val notificationFinalText = formatNotificationToString(filteredNotification)
+                        filteredNotification.parsedText = notificationFinalText
+
+                        val allow = allowNotification(
                             notificationText = notificationFinalText,
                             intent = settingsRepository.startSmartCategorizationStringFlow.first()
                         )
-                    }
 
-                    if (allow){
-                        postNotification(this@NotiSentryService, notification)
-                        Log.d(tag, "Allowed Notification using Gemini-2.5-Flash from: $packageName")
-                    } else {
-                        settingsRepository.incrementNotification()
-                        repository.addBlockedNotification(notification)
-                        Log.d(tag, "Blocked and saved notification from: $packageName")
+                        if (allow){
+                            postNotification(this@NotiSentryService, filteredNotification)
+                        } else {
+                            if (!filteredNotification.messages.isEmpty() || !filteredNotification.text.isBlank()) {
+                                settingsRepository.incrementNotification()
+                                repository.addBlockedNotification(filteredNotification)
+                            }
+                        }
                     }
                 }
             }
@@ -108,11 +106,9 @@ suspend fun allowNotification(notificationText: String, intent: String): Boolean
                     "Notification: " + notificationText
 
             val model = Firebase.ai(backend = GenerativeBackend.googleAI())
-                .generativeModel("gemini-2.5-flash")
+                .generativeModel("gemini-2.5-flash-lite")
 
             val summary = model.generateContent(prompt).text?:""
-
-            Log.d("NotiSentryAI", "Gemini Decided to : $summary")
 
             return@withContext summary.contains("A_2")
 
@@ -130,7 +126,6 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
     val channelId = "general_notifications"
     val channelName = "General"
 
-    // Create the channel (no changes needed here)
     val channel = NotificationChannel(
         channelId,
         channelName,
@@ -138,6 +133,7 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
     ).apply {
         description = "General app notifications"
     }
+
     notificationManager.createNotificationChannel(channel)
 
     val launchIntent = context.packageManager.getLaunchIntentForPackage(appNotification.packageName)
@@ -147,7 +143,6 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
         null
     }
 
-    // Start building the notification
     val notificationBuilder = NotificationCompat.Builder(context, channelId)
         .setSmallIcon(R.drawable.ic_launcher_foreground)
         .setLargeIcon(getAppIconByPackageName(context, appNotification.packageName)?.toBitmapOrNull())
@@ -171,14 +166,12 @@ fun postNotification(context: Context, appNotification: AppNotifications) {
         notificationBuilder.setStyle(messagingStyle)
 
     } else {
-        // This is a standard notification
         notificationBuilder
             .setContentTitle(appNotification.title.ifBlank { appNotification.appName })
             .setContentText(appNotification.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(appNotification.text)) // Allow text to expand
     }
 
-    // Use a unique ID based on the timestamp for this notification
     val notificationId = appNotification.timestamp.toInt()
     notificationManager.notify(notificationId, notificationBuilder.build())
 }
@@ -244,5 +237,36 @@ fun extractNotificationData(sbn: StatusBarNotification, context: Context): AppNo
         messages = messages,
         conversationTitle = extras.getString(Notification.EXTRA_CONVERSATION_TITLE) ?: ""
     )
+}
+
+suspend fun filterNewMessages(
+    sbn: StatusBarNotification,
+    notification: AppNotifications,
+    repository: NotificationRepository
+): AppNotifications? {
+
+    if (notification.messages.isNotEmpty()) {
+        val newMessages = mutableListOf<AppNotifications.MessageInfo>()
+        for (message in notification.messages) {
+            val messageId = sbn.key + message.timestamp
+            if (!repository.isMessageProcessed(messageId)) {
+                newMessages.add(message)
+                repository.addProcessedMessage(messageId)
+            }
+        }
+        return if (newMessages.isNotEmpty()) {
+            notification.copy(messages = newMessages)
+        } else {
+            null
+        }
+    } else {
+        val notificationId = sbn.key + sbn.postTime
+        if (!repository.isMessageProcessed(notificationId)) {
+            repository.addProcessedMessage(notificationId)
+            return notification
+        } else {
+            return null
+        }
+    }
 }
 
